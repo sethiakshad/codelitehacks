@@ -13,6 +13,7 @@ import Login from "./pages/Login"
 import Logistics from "./pages/Logistics"
 import ComplianceDocs from "./pages/ComplianceDocs"
 import DealFlow from "./pages/DealFlow"
+import WasteForecast from "./pages/WasteForecast"
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
               <Route path="list-waste" element={<ProtectedRoute><CreateListing /></ProtectedRoute>} />
               <Route path="buyer" element={<ProtectedRoute><BuyerDashboard /></ProtectedRoute>} />
               <Route path="logistics" element={<ProtectedRoute><Logistics /></ProtectedRoute>} />
+              <Route path="forecast" element={<ProtectedRoute><WasteForecast /></ProtectedRoute>} />
               <Route path="docs" element={<ProtectedRoute><ComplianceDocs /></ProtectedRoute>} />
               <Route path="deals" element={<ProtectedRoute><DealFlow /></ProtectedRoute>} />
             </Route>
