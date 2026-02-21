@@ -42,6 +42,7 @@ export default function Dashboard() {
     const [marketplaceListings, setMarketplaceListings] = useState([])
     const [deals, setDeals] = useState([])
     const [totalCO2, setTotalCO2] = useState(0)
+    const [transportStatus, setTransportStatus] = useState({}) // dealId -> "Pending" | "Completed"
 
     // Socket.IO state
     const [socket, setSocket] = useState(null)
@@ -320,6 +321,29 @@ export default function Dashboard() {
         } catch (err) {
             console.error("Failed to delete requirement:", err)
             alert(err.message || "Failed to delete requirement.")
+        }
+    }
+
+    const handleMarkTransportComplete = async (dealId) => {
+        // Mark transport as complete in local state
+        setTransportStatus(prev => ({ ...prev, [dealId]: "Completed" }))
+    }
+
+    const handleOpenCompliancePdf = async (dealId) => {
+        // Open the server-generated PDF in a new tab — token is included via fetch then blob URL
+        try {
+            const token = localStorage.getItem("token")
+            const apiBase = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:4000`
+            const res = await fetch(`${apiBase}/api/deals/${dealId}/compliance-pdf`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            if (!res.ok) throw new Error("Failed to fetch PDF")
+            const blob = await res.blob()
+            const url = URL.createObjectURL(blob)
+            window.open(url, "_blank")
+        } catch (err) {
+            console.error("Failed to open compliance PDF:", err)
+            alert("Could not open compliance document. Please try again.")
         }
     }
 
@@ -684,27 +708,60 @@ export default function Dashboard() {
                                 {Array.isArray(deals) && deals.map((deal, i) => {
                                     const isSeller = user && deal.seller_id && (deal.seller_id._id === user.id || deal.seller_id._id === user._id)
                                     const isPending = deal.status === "Pending"
+                                    const isCompleted = deal.status === "Completed"
+                                    const transport = transportStatus[deal._id] || "Pending"
+                                    const transportDone = transport === "Completed"
 
                                     return (
-                                        <div key={deal._id} className="flex justify-between items-center pb-2 border-b last:border-0 last:pb-0">
-                                            <div>
-                                                {isSeller ? (
-                                                    <p className="font-medium text-sm">Sale: {deal.listing_id?.waste_type}</p>
-                                                ) : (
-                                                    <p className="font-medium text-sm">Purchase: {deal.listing_id?.waste_type}</p>
-                                                )}
-                                                <p className="text-xs text-muted-foreground">
-                                                    {deal.quantity} diverted • {deal.co2_saved?.toFixed(1)}t CO2 saved
-                                                </p>
-                                                <p className="text-xs text-primary mt-0.5">Status: {deal.status}</p>
-                                            </div>
-                                            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-                                                {isSeller && isPending && (
-                                                    <Button size="sm" className="h-8" onClick={() => handleApproveDeal(deal._id)}>Approve</Button>
-                                                )}
-                                                <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => handleOpenChat(deal)}>
-                                                    <MessageSquare className="w-4 h-4" /> Chat
-                                                </Button>
+                                        <div key={deal._id} className="flex flex-col gap-2 pb-3 border-b last:border-0 last:pb-0">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    {isSeller ? (
+                                                        <p className="font-medium text-sm">Sale: {deal.listing_id?.waste_type}</p>
+                                                    ) : (
+                                                        <p className="font-medium text-sm">Purchase: {deal.listing_id?.waste_type}</p>
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {deal.quantity} diverted • {deal.co2_saved?.toFixed(1)}t CO2 saved
+                                                    </p>
+                                                    <p className="text-xs text-primary mt-0.5">Status: {deal.status}</p>
+
+                                                    {/* Transport status — only shown when deal is Completed */}
+                                                    {isCompleted && (
+                                                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                            <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${transportDone ? "bg-emerald-500/15 text-emerald-500" : "bg-orange-400/15 text-orange-500"}`}>
+                                                                <Truck className="w-3 h-3" />
+                                                                Transport: {transport}
+                                                            </span>
+
+                                                            {/* Compliance Document — visible only when transport is completed */}
+                                                            {transportDone && (
+                                                                <button
+                                                                    onClick={() => handleOpenCompliancePdf(deal._id)}
+                                                                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                                                                >
+                                                                    <FileText className="w-3 h-3" />
+                                                                    Compliance Document
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                                                    {isSeller && isPending && (
+                                                        <Button size="sm" className="h-8" onClick={() => handleApproveDeal(deal._id)}>Approve</Button>
+                                                    )}
+                                                    {/* Mark transport complete button — only for completed deals with pending transport */}
+                                                    {isCompleted && !transportDone && (
+                                                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => handleMarkTransportComplete(deal._id)}>
+                                                            <Truck className="w-3 h-3" /> Mark Transport Done
+                                                        </Button>
+                                                    )}
+                                                    <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => handleOpenChat(deal)}>
+                                                        <MessageSquare className="w-4 h-4" /> Chat
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
                                     )
