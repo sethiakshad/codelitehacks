@@ -120,11 +120,6 @@ export default function ProducerDashboard() {
                                 <Package className="h-4 w-4" /> Add Waste Profile
                             </Button>
                         </Link>
-                        <Link to="/impact" className="block">
-                            <Button variant="outline" className="w-full justify-start gap-2">
-                                <BarChart3 className="h-4 w-4" /> Impact Calculator
-                            </Button>
-                        </Link>
                         <Link to="/docs" className="block">
                             <Button variant="outline" className="w-full justify-start gap-2">
                                 <FileText className="h-4 w-4" /> Compliance Docs

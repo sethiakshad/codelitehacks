@@ -33,10 +33,6 @@ export default function Layout() {
                                 <Link to="/list-waste" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                                     New Listing
                                 </Link>
-                                <div className="h-4 w-px bg-border" />
-                                <Link to="/impact" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                                    Calculator
-                                </Link>
                                 <Link to="/docs" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                                     Docs
                                 </Link>
