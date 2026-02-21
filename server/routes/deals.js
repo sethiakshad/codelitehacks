@@ -2,6 +2,7 @@ import { Router } from "express";
 import Deal from "../models/deals.model.js";
 import EmissionFactor from "../models/emissionFactors.model.js";
 import FactoryWasteProfile from "../models/factoryWasteProfiles.model.js";
+import Factory from "../models/factories.model.js";
 import User from "../models/users.model.js";
 import auth from "../middleware/auth.js";
 

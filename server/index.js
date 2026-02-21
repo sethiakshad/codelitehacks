@@ -17,7 +17,9 @@ import wasteRatioRoutes from "./routes/wasteRatios.js";
 import emissionFactorRoutes from "./routes/emissionFactors.js";
 import requirementRoutes from "./routes/requirements.js";
 import marketplaceRoutes from "./routes/marketplace.js";
+import messageRoutes from "./routes/messages.js";
 import dealRoutesInit from "./routes/deals.js";
+import Message from "./models/messages.model.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -36,6 +38,25 @@ io.on("connection", (socket) => {
     socket.on("identify", (userId) => {
         socket.join(userId);
         console.log(`User ${userId} joined their personal room.`);
+    });
+
+    // Chat Message Event
+    socket.on("send_message", async (data) => {
+        const { deal_id, sender_id, receiver_id, text } = data;
+        if (!deal_id || !sender_id || !receiver_id || !text) return;
+
+        try {
+            // Save to DB
+            const newMessage = await Message.create({ deal_id, sender_id, receiver_id, text });
+
+            // Deliver to the receiver in real-time
+            io.to(receiver_id).emit("receive_message", newMessage);
+
+            // Send back acknowledgment to the sender
+            socket.emit("message_sent", newMessage);
+        } catch (err) {
+            console.error("Socket send_message error:", err);
+        }
     });
 
     socket.on("disconnect", () => {
@@ -69,6 +90,7 @@ app.use("/api/waste-ratios", wasteRatioRoutes);
 app.use("/api/emission-factors", emissionFactorRoutes);
 app.use("/api/requirements", requirementRoutes);
 app.use("/api/marketplace", marketplaceRoutes);
+app.use("/api/messages", messageRoutes);
 app.use("/api/deals", dealRoutesInit(io)); // Pass io to deals route
 
 const PORT = process.env.PORT || 4000;

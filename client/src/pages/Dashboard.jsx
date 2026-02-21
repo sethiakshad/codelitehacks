@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card"
-import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, ArrowRight, Truck, ClipboardList, Plus, Pencil, X, Trash2 } from "lucide-react"
+import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, ArrowRight, Truck, ClipboardList, Plus, Pencil, X, Trash2, MessageSquare, Send } from "lucide-react"
 import { Button } from "../components/Button"
 import { Link } from "react-router-dom"
 import { api } from "../lib/api"
@@ -49,6 +49,11 @@ export default function Dashboard() {
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [editId, setEditId] = useState(null)
+
+    // Chat state
+    const [activeChat, setActiveChat] = useState(null) // Deal object
+    const [messages, setMessages] = useState([])
+    const [newMessage, setNewMessage] = useState("")
     const [formData, setFormData] = useState({ material: "", qty: "", priority: "Medium" })
     const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -70,6 +75,10 @@ export default function Dashboard() {
         newSocket.on("deal_updated", (data) => {
             alert(`Deal Update: ${data.message}`)
             fetchDeals()
+        })
+
+        newSocket.on("receive_message", (message) => {
+            setMessages((prev) => [...prev, message])
         })
 
         return () => newSocket.disconnect()
@@ -164,6 +173,57 @@ export default function Dashboard() {
     const handleCloseModal = () => {
         setIsModalOpen(false)
         setEditId(null)
+    }
+
+    // --- Chat Functions ---
+    const fetchChatHistory = async (dealId) => {
+        try {
+            const res = await api.get(`/api/messages/${dealId}`)
+            setMessages(res.data || [])
+        } catch (err) {
+            console.error("Failed to fetch chat:", err)
+            setMessages([])
+        }
+    }
+
+    const handleOpenChat = (deal) => {
+        setActiveChat(deal)
+        fetchChatHistory(deal._id)
+    }
+
+    const handleCloseChat = () => {
+        setActiveChat(null)
+        setMessages([])
+    }
+
+    const handleSendMessage = (e) => {
+        e.preventDefault()
+        if (!newMessage.trim() || !socket || !activeChat || !user) return
+
+        const dealId = activeChat._id
+        const isSeller = activeChat.seller_id && (activeChat.seller_id._id === user.id || activeChat.seller_id._id === user._id)
+
+        const receiverId = isSeller
+            ? activeChat.buyer_id?._id || activeChat.buyer_id
+            : activeChat.seller_id?._id || activeChat.seller_id;
+
+        if (!receiverId) {
+            alert("Cannot send message: The other party's profile is incomplete or missing in this older deal.");
+            return;
+        }
+
+        const msgData = {
+            deal_id: dealId,
+            sender_id: user.id || user._id,
+            receiver_id: receiverId,
+            text: newMessage
+        }
+
+        const optimisticMsg = { ...msgData, _id: Date.now().toString(), createdAt: new Date().toISOString() }
+        setMessages((prev) => [...prev, optimisticMsg])
+
+        socket.emit("send_message", msgData)
+        setNewMessage("")
     }
 
     const handleSaveRequirement = async (e) => {
@@ -473,6 +533,9 @@ export default function Dashboard() {
                                                 {isSeller && isPending && (
                                                     <Button size="sm" className="h-8" onClick={() => handleApproveDeal(deal._id)}>Approve</Button>
                                                 )}
+                                                <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => handleOpenChat(deal)}>
+                                                    <MessageSquare className="w-4 h-4" /> Chat
+                                                </Button>
                                             </div>
                                         </div>
                                     )
@@ -520,6 +583,69 @@ export default function Dashboard() {
                     <Button variant="outline" className="w-full mt-4">View All Archive</Button>
                 </CardContent>
             </Card>
+
+            {/* Chat Slide-out / Modal */}
+            <AnimatePresence>
+                {activeChat && (
+                    <div className="fixed inset-0 z-50 flex justify-end bg-background/80 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ x: "100%" }}
+                            animate={{ x: 0 }}
+                            exit={{ x: "100%" }}
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            className="w-full max-w-md bg-card border-l shadow-2xl flex flex-col h-full"
+                        >
+                            {/* Chat Header */}
+                            <div className="flex items-center justify-between p-4 border-b bg-muted/40 text-card-foreground">
+                                <div>
+                                    <h3 className="font-semibold flex items-center gap-2">
+                                        <MessageSquare className="w-4 h-4" /> Deal Chat
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        {activeChat.listing_id?.waste_type} • {activeChat.quantity}
+                                    </p>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={handleCloseChat} className="rounded-full">
+                                    <X className="w-5 h-5" />
+                                </Button>
+                            </div>
+
+                            {/* Messages Container */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col min-h-0 bg-background/50">
+                                {messages.map((msg) => {
+                                    const isMe = msg.sender_id === (user.id || user._id)
+                                    return (
+                                        <div key={msg._id} className={`flex flex-col max-w-[80%] ${isMe ? "self-end items-end" : "self-start items-start"}`}>
+                                            <div className={`px-4 py-2.5 rounded-2xl text-sm ${isMe ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm border"}`}>
+                                                {msg.text}
+                                            </div>
+                                            <span className="text-[10px] text-muted-foreground mt-1 mx-1">
+                                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            {/* Chat Input */}
+                            <div className="p-4 border-t bg-card text-card-foreground">
+                                <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Type a message..."
+                                        className="flex h-10 w-full rounded-full border border-input bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                        value={newMessage}
+                                        onChange={(e) => setNewMessage(e.target.value)}
+                                    />
+                                    <Button type="submit" size="icon" className="rounded-full flex-shrink-0" disabled={!newMessage.trim()}>
+                                        <Send className="w-4 h-4" />
+                                    </Button>
+                                </form>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     )
 }
