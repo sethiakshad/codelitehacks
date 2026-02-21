@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card"
-import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, ArrowRight, Truck, ClipboardList, Plus, Pencil, X, Trash2, MessageSquare, Send } from "lucide-react"
+import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, ArrowRight, Truck, ClipboardList, Plus, Pencil, X, Trash2, MessageSquare, Send, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "../components/Button"
 import { Link } from "react-router-dom"
 import { api } from "../lib/api"
@@ -69,6 +69,11 @@ export default function Dashboard() {
     const [newMessage, setNewMessage] = useState("")
     const [formData, setFormData] = useState({ material: "", qty: "", priority: "Medium" })
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    // AI Matches state
+    const [aiMatchesModal, setAiMatchesModal] = useState({ open: false, reqId: null, material: null })
+    const [aiMatchesData, setAiMatchesData] = useState([])
+    const [aiMatchesLoading, setAiMatchesLoading] = useState(false)
 
     useEffect(() => {
         // Initialize Socket.IO connection
@@ -349,17 +354,22 @@ export default function Dashboard() {
                                                 }`}>{req.priority}</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground">Qty: {req.qty}</p>
-                                        <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1 ${req.matched ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                                            {req.matched ? <><BadgeCheck className="w-3 h-3" /> Supplier matched</> : "Searching..."}
+                                        <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1 ${req.matched ? 'text-emerald-500' : 'text-primary/80'}`}>
+                                            {req.matched ? <><BadgeCheck className="w-3 h-3" /> Supplier matched</> : "Matching available"}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 border border-transparent" onClick={() => handleOpenModal(req)}>
-                                            <Pencil className="w-3.5 h-3.5" />
+                                    <div className="flex flex-col gap-2 items-end">
+                                        <Button size="sm" variant="default" className="h-8 gap-1 shadow-sm px-3" onClick={() => handleOpenAiMatches(req)}>
+                                            <Sparkles className="w-3.5 h-3.5" /> AI Match
                                         </Button>
-                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteRequirement(req._id)}>
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </Button>
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 border border-transparent" onClick={() => handleOpenModal(req)}>
+                                                <Pencil className="w-3 h-3" />
+                                            </Button>
+                                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteRequirement(req._id)}>
+                                                <Trash2 className="w-3 h-3" />
+                                            </Button>
+                                        </div>
                                     </div>
                                 </motion.div>
                             ))}
@@ -446,6 +456,87 @@ export default function Dashboard() {
                                     </Button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* AI Matches Modal */}
+            <AnimatePresence>
+                {aiMatchesModal.open && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="w-full max-w-2xl bg-card border rounded-xl shadow-lg flex flex-col max-h-[85vh]"
+                        >
+                            <div className="flex items-center justify-between p-4 border-b bg-muted/20">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="h-5 w-5 text-primary" />
+                                    <div>
+                                        <h2 className="font-semibold text-base leading-tight">Gemini AI Matches</h2>
+                                        <p className="text-xs text-muted-foreground">Marketplace results for {aiMatchesModal.material}</p>
+                                    </div>
+                                </div>
+                                <Button variant="ghost" size="sm" className="w-8 h-8 p-0" onClick={closeAiMatches}>
+                                    <X className="w-4 h-4" />
+                                </Button>
+                            </div>
+
+                            <div className="p-4 overflow-y-auto flex-1 bg-muted/5">
+                                {aiMatchesLoading ? (
+                                    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-4">
+                                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                        <p className="text-sm">Gemini is analyzing marketplace patterns...</p>
+                                    </div>
+                                ) : aiMatchesData.length === 0 ? (
+                                    <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg border-muted">
+                                        <p className="font-medium text-foreground">No circular matches found yet.</p>
+                                        <p className="text-xs mt-1">Check back later as new factories list waste.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {aiMatchesData.map((match, i) => (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}
+                                                key={match._id}
+                                                className={`p-4 border rounded-xl bg-card shadow-sm transition-all hover:border-primary/40 ${i === 0 ? 'ring-1 ring-primary/40' : ''}`}
+                                            >
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="flex-1 space-y-2">
+                                                        <div className="flex items-center justify-between">
+                                                            <h3 className="font-bold text-base flex items-center gap-2">
+                                                                {match.waste_type}
+                                                                {i === 0 && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase tracking-wider">Top Match</span>}
+                                                            </h3>
+                                                            <div className="flex items-center gap-1.5 shrink-0">
+                                                                <span className="text-2xl font-black text-emerald-500 tracking-tighter">{match.match_percentage}%</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <p className="text-xs text-muted-foreground/90 border-l-2 border-primary/40 pl-2 py-0.5 italic mb-2">
+                                                            "{match.match_reason}"
+                                                        </p>
+
+                                                        <div className="grid grid-cols-2 gap-y-2 text-xs">
+                                                            <div className="text-muted-foreground">Supplier: <span className="font-medium text-foreground">{match.factory_id?.name || match.user_id?.name || "Independent"}</span></div>
+                                                            <div className="text-muted-foreground">Location: <span className="font-medium text-foreground">{match.factory_id?.city || "Verified"}</span></div>
+                                                            <div className="text-muted-foreground">Quantity: <span className="font-medium text-foreground">{match.average_quantity_per_month} {match.unit}</span></div>
+                                                            <div className="text-emerald-500 font-medium flex items-center gap-1"><BadgeCheck className="w-3.5 h-3.5" /> ~{match.potential_co2_savings_per_ton?.toFixed(2)}t CO₂ Saved/t</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 pt-3 border-t">
+                                                    <Button size="sm" className="w-full gap-2 shadow-sm" onClick={() => { closeAiMatches(); handleInitiateDeal(match._id, match.average_quantity_per_month); }}>
+                                                        Initiate Fast Deal <ArrowRight className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </motion.div>
                     </div>
                 )}
