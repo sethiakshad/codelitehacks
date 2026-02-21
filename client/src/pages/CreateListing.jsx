@@ -10,17 +10,80 @@ export default function CreateListing() {
     const [step, setStep] = useState(1)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
+    const [error, setError] = useState("")
+
+    const [formData, setFormData] = useState({
+        waste_type: "",
+        category: "Mineral Waste",
+        average_quantity_per_month: "",
+        unit: "Tons / month",
+        frequency: "Continuous / Recurring",
+        hazardous: "no",
+        storage_condition: "dry",
+        available_from: "",
+        pickup_required: "Yes, buyer must arrange transport",
+        location: "",
+        expected_price: ""
+    })
 
     const handleNext = () => setStep((s) => s + 1)
     const handleBack = () => setStep((s) => s - 1)
 
-    const handleSubmit = (e) => {
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value })
+    }
+
+    const handleSubmit = async (e) => {
         e.preventDefault()
+        setError("")
         setIsSubmitting(true)
-        setTimeout(() => {
+
+        try {
+            const token = localStorage.getItem("token")
+            // Fetch the user's factory profile to get the factory_id
+            const userRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/auth/me`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            })
+            const userData = await userRes.json()
+
+            if (!userRes.ok) {
+                setError(userData.message || "Failed to authenticate.")
+                setIsSubmitting(false)
+                return
+            }
+
+            const factory_id = userData.user.factory_id || userData.user.id
+
+            // Note: Our DB schema currently supports only these fields:
+            // factory_id, waste_type, average_quantity_per_month, hazardous, storage_condition
+            // Sending the additional fields from UI to backend for future usage
+            const payload = {
+                ...formData,
+                factory_id,
+                hazardous: formData.hazardous === "no" ? false : true
+            }
+
+            const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/waste-profiles`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(payload),
+            })
+
+            const data = await res.json()
+
+            if (!res.ok) {
+                setError(data.message || "Server error.")
+            } else {
+                setIsSuccess(true)
+            }
+        } catch (err) {
+            setError("Network error. Please try again.")
+        } finally {
             setIsSubmitting(false)
-            setIsSuccess(true)
-        }, 1500)
+        }
     }
 
     if (isSuccess) {
@@ -84,11 +147,11 @@ export default function CreateListing() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Material Type</label>
-                                            <input type="text" placeholder="e.g., Fly Ash" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required />
+                                            <input type="text" name="waste_type" value={formData.waste_type} onChange={handleChange} placeholder="e.g., Fly Ash" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Category</label>
-                                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
+                                            <select name="category" value={formData.category} onChange={handleChange} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
                                                 <option>Mineral Waste</option>
                                                 <option>Organic</option>
                                                 <option>Metals</option>
@@ -99,11 +162,11 @@ export default function CreateListing() {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Quantity</label>
-                                            <input type="number" placeholder="e.g. 200" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required />
+                                            <input type="number" name="average_quantity_per_month" value={formData.average_quantity_per_month} onChange={handleChange} placeholder="e.g. 200" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required />
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Unit</label>
-                                            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                            <select name="unit" value={formData.unit} onChange={handleChange} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                                                 <option>Tons / month</option>
                                                 <option>kg / month</option>
                                                 <option>Liters / month</option>
@@ -113,7 +176,7 @@ export default function CreateListing() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Frequency</label>
-                                        <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                        <select name="frequency" value={formData.frequency} onChange={handleChange} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                                             <option>Continuous / Recurring</option>
                                             <option>One-time bulk</option>
                                         </select>
@@ -135,7 +198,7 @@ export default function CreateListing() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Hazardous Material?</label>
-                                        <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                        <select name="hazardous" value={formData.hazardous} onChange={handleChange} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                                             <option value="no">No - Non Hazard</option>
                                             <option value="low">Yes - Low Risk</option>
                                             <option value="high">Yes - High/Toxic</option>
@@ -143,7 +206,7 @@ export default function CreateListing() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Storage Condition Required</label>
-                                        <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                        <select name="storage_condition" value={formData.storage_condition} onChange={handleChange} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                                             <option value="dry">Dry / Covered Area</option>
                                             <option value="sealed">Sealed Containers / Barrels</option>
                                             <option value="open">Open Yard</option>
@@ -168,12 +231,12 @@ export default function CreateListing() {
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Available From</label>
-                                        <input type="month" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                                        <input type="month" name="available_from" value={formData.available_from} onChange={handleChange} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
                                     </div>
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Pickup Required?</label>
-                                        <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                                        <select name="pickup_required" value={formData.pickup_required} onChange={handleChange} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                                             <option>Yes, buyer must arrange transport</option>
                                             <option>No, we will deliver to buyer</option>
                                         </select>
@@ -181,19 +244,25 @@ export default function CreateListing() {
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Location</label>
-                                        <input type="text" placeholder="e.g. Nagpur" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                                        <input type="text" name="location" value={formData.location} onChange={handleChange} placeholder="e.g. Nagpur" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
                                     </div>
 
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Expected Price</label>
                                         <div className="relative">
                                             <span className="absolute left-3 top-2.5 text-muted-foreground text-sm font-semibold">₹</span>
-                                            <input type="number" placeholder="per unit (leave blank if zero)" className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm" />
+                                            <input type="number" name="expected_price" value={formData.expected_price} onChange={handleChange} placeholder="per unit (leave blank if zero)" className="flex h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm" />
                                         </div>
                                     </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
+
+                        {error && (
+                            <div className="bg-red-500/10 border-red-500/50 text-red-500 border p-3 rounded-md text-sm mt-4">
+                                {error}
+                            </div>
+                        )}
 
                         <div className="flex justify-between mt-8 pt-4 border-t">
                             <Button type="button" variant="ghost" onClick={handleBack} disabled={step === 1 || isSubmitting}>
