@@ -25,6 +25,7 @@ export default function Register() {
         setError("")
         setIsSubmitting(true)
         try {
+            // Step 1: Create user account — this is the critical step
             const data = await api.post("/api/auth/register", {
                 name: formData.name,
                 email: formData.email,
@@ -33,20 +34,24 @@ export default function Register() {
             })
             login(data.token, data.user)
 
-            // Create factory record with file upload
-            const factoryData = new FormData();
-            factoryData.append("name", formData.name);
-            factoryData.append("industry_type", formData.industryType);
-            factoryData.append("email", formData.email);
-            factoryData.append("city", formData.location.split(",")[0]?.trim() || "");
-            factoryData.append("state", formData.location.split(",")[1]?.trim() || "");
-            if (licenseFile) {
-                factoryData.append("licenseFile", licenseFile);
+            // Step 2: Create factory profile — best-effort, won't block registration
+            try {
+                const factoryData = new FormData();
+                factoryData.append("name", formData.name);
+                factoryData.append("industry_type", formData.industryType || "Other");
+                factoryData.append("email", formData.email);
+                factoryData.append("city", formData.location.split(",")[0]?.trim() || "");
+                factoryData.append("state", formData.location.split(",")[1]?.trim() || "");
+                if (licenseFile) {
+                    factoryData.append("licenseFile", licenseFile);
+                }
+                await api.post("/api/factories", factoryData)
+            } catch (factoryErr) {
+                // Non-fatal: user is registered, factory profile can be completed later
+                console.warn("Factory profile creation failed (non-fatal):", factoryErr.message)
             }
 
-            await api.post("/api/factories", factoryData)
-
-            setStep(3) // Success
+            setStep(3) // Show success screen
         } catch (err) {
             setError(err.message || "Registration failed. Please try again.")
         } finally {
