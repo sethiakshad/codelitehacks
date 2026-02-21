@@ -5,6 +5,8 @@ import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, Arro
 import { Button } from "../components/Button"
 import { Link } from "react-router-dom"
 import { api } from "../lib/api"
+import { useAuth } from "../context/AuthContext"
+import { io } from "socket.io-client"
 
 function MatchRing({ percent }) {
     const radius = 20
@@ -31,8 +33,17 @@ function MatchRing({ percent }) {
 }
 
 export default function Dashboard() {
+    const { user } = useAuth()
     const [requirements, setRequirements] = useState([])
     const [loadingReqs, setLoadingReqs] = useState(true)
+
+    // Deals & Marketplace state
+    const [marketplaceListings, setMarketplaceListings] = useState([])
+    const [deals, setDeals] = useState([])
+    const [totalCO2, setTotalCO2] = useState(0)
+
+    // Socket.IO state
+    const [socket, setSocket] = useState(null)
 
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -41,7 +52,27 @@ export default function Dashboard() {
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     useEffect(() => {
+        // Initialize Socket.IO connection
+        const newSocket = io(import.meta.env.VITE_API_URL || "http://localhost:4000")
+        setSocket(newSocket)
+
+        if (user) {
+            newSocket.emit("identify", user.id || user._id)
+        }
+
+        newSocket.on("new_deal", (data) => {
+            // New deal notification received!
+            alert(`Real-Time Update: ${data.message}`)
+            fetchDeals() // Refresh deals to compute new offsets
+        })
+
+        return () => newSocket.disconnect()
+    }, [user])
+
+    useEffect(() => {
         fetchRequirements()
+        fetchMarketplace()
+        fetchDeals()
     }, [])
 
     const fetchRequirements = async () => {
@@ -52,6 +83,43 @@ export default function Dashboard() {
             console.error("Failed to fetch requirements:", err)
         } finally {
             setLoadingReqs(false)
+        }
+    }
+
+    const fetchMarketplace = async () => {
+        try {
+            const res = await api.get("/api/marketplace")
+            setMarketplaceListings(res.data)
+        } catch (err) {
+            console.error("Failed to fetch marketplace listings:", err)
+        }
+    }
+
+    const fetchDeals = async () => {
+        try {
+            const res = await api.get("/api/deals")
+            const openDeals = res.data
+            setDeals(openDeals)
+
+            // Calculate Total CO2 from deals
+            const co2Sum = openDeals.reduce((acc, deal) => acc + (deal.co2_saved || 0), 0)
+            setTotalCO2(co2Sum)
+        } catch (err) {
+            console.error("Failed to fetch deals:", err)
+        }
+    }
+
+    const handleInitiateDeal = async (listingId, quantityStr) => {
+        // Simple extraction of number from qty string like "12 tons/mo"
+        const numQty = parseFloat(quantityStr) || 1;
+
+        try {
+            await api.post("/api/deals", { listing_id: listingId, quantity: numQty })
+            alert("Deal initiated! The seller has been notified in real-time.")
+            fetchDeals() // refresh my deals view
+        } catch (err) {
+            console.error(err)
+            alert("Failed to initiate deal.")
         }
     }
 
@@ -115,9 +183,9 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {[
-                    { title: "Active Listings", value: "12", icon: Package, trend: "+2 this week" },
-                    { title: "Matches Found", value: "8", icon: TrendingUp, trend: "3 pending review" },
-                    { title: "CO2 Offset", value: "450 t", icon: BarChart3, trend: "+12% vs last month" },
+                    { title: "Active Listings", value: "12", icon: Package, trend: "Static mock" },
+                    { title: "Open Deals", value: deals.length.toString(), icon: TrendingUp, trend: "Real-time updates" },
+                    { title: "CO2 Offset", value: `${totalCO2.toFixed(1)} t`, icon: BarChart3, trend: "Calculated from deals" },
                     { title: "Missing Docs", value: "1", icon: AlertCircle, trend: "Requires attention", urgent: true },
                 ].map((item, i) => (
                     <Card key={i} animate={false} className="border-l-4 border-l-primary data-[urgent=true]:border-l-destructive" data-urgent={item.urgent}>
@@ -299,45 +367,36 @@ export default function Dashboard() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Marketplace (Buying)</CardTitle>
-                        <CardDescription>AI-matched materials based on your requirements.</CardDescription>
+                        <CardDescription>Industrial byproducts listed by other factories.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            {[
-                                { material: "Steel Offcuts (Premium Grade)", seller: "Tata Motors Plant C", distance: "45 km", qty: "12 tons/mo", match: 98, eco: "2.4t CO2 saved" },
-                                { material: "HDPE Packaging Waste", seller: "Reliance Retail Dist", distance: "12 km", qty: "500 kg/mo", match: 92, eco: "0.8t CO2 saved" },
-                                { material: "Industrial Heat Exchanger Output", seller: "ChemCorp Refinery", distance: "8 km", qty: "Continuous", match: 86, eco: "12 MWh saved" },
-                            ].map((item, i) => (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.1 * i }}
-                                    key={i}
-                                    className="flex items-start gap-4 p-4 border rounded-lg bg-card hover:border-primary/50 transition-all shadow-sm"
-                                >
-                                    <MatchRing percent={item.match} />
-                                    <div className="flex-1 min-w-0 space-y-1.5">
-                                        <h3 className="font-semibold text-sm leading-tight">{item.material}</h3>
-                                        <p className="text-xs text-muted-foreground">{item.seller} • {item.distance} away</p>
-                                        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                                            <motion.div
-                                                className={`h-full rounded-full ${item.match >= 90 ? 'bg-emerald-500' : item.match >= 75 ? 'bg-amber-400' : 'bg-orange-500'}`}
-                                                initial={{ width: 0 }}
-                                                animate={{ width: `${item.match}%` }}
-                                                transition={{ duration: 0.6, delay: 0.15 * i }}
-                                            />
+                        {marketplaceListings.length === 0 ? (
+                            <div className="text-center py-8 text-sm text-muted-foreground">No marketplace listings available.</div>
+                        ) : (
+                            <div className="space-y-4">
+                                {marketplaceListings.map((item, i) => (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.1 * i }}
+                                        key={item._id}
+                                        className="flex items-start gap-4 p-4 border rounded-lg bg-card hover:border-primary/50 transition-all shadow-sm"
+                                    >
+                                        <div className="flex-1 min-w-0 space-y-1.5">
+                                            <h3 className="font-semibold text-sm leading-tight">{item.waste_type}</h3>
+                                            <p className="text-xs text-muted-foreground">{item.factory_id?.name || "Unknown Factory"} • {item.factory_id?.city || "Location unknown"}</p>
+                                            <div className="flex items-center gap-3 text-xs">
+                                                <span className="font-medium bg-muted px-2 py-0.5 rounded">Avg Qty: {item.average_quantity_per_month} /mo</span>
+                                                <span className="flex items-center gap-1 text-emerald-500 font-medium">
+                                                    <BadgeCheck className="w-3 h-3" /> Potential: {item.potential_co2_savings_per_ton?.toFixed(2)}t CO2/ton saved
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-3 text-xs">
-                                            <span className="font-medium bg-muted px-2 py-0.5 rounded">Qty: {item.qty}</span>
-                                            <span className="flex items-center gap-1 text-emerald-500 font-medium">
-                                                <BadgeCheck className="w-3 h-3" /> {item.eco}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <Button size="sm" className="flex-shrink-0 gap-1 self-center">Deal <ArrowRight className="w-3 h-3" /></Button>
-                                </motion.div>
-                            ))}
-                        </div>
+                                        <Button size="sm" className="flex-shrink-0 gap-1 self-center" onClick={() => handleInitiateDeal(item._id, item.average_quantity_per_month)}>Deal <ArrowRight className="w-3 h-3" /></Button>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
@@ -348,63 +407,65 @@ export default function Dashboard() {
                         <CardTitle>Open Deals</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            {[
-                                { id: "#D-102", status: "Awaiting Docs" },
-                                { id: "#D-098", status: "Logistics Scheduled" },
-                            ].map((deal, i) => (
-                                <div key={i} className="flex justify-between items-center pb-2 border-b last:border-0 last:pb-0">
-                                    <div>
-                                        <p className="font-medium">{deal.id}</p>
-                                        <p className="text-xs text-muted-foreground">{deal.status}</p>
-                                    </div>
-                                    <Button variant="ghost" size="sm">View</Button>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="mt-6">
-                            <Card className="bg-primary text-primary-foreground border-none">
-                                <CardContent className="pt-6">
-                                    <div className="flex items-start gap-4">
-                                        <div className="p-3 bg-white/20 rounded-lg">
-                                            <Truck className="w-6 h-6" />
-                                        </div>
+                        {deals.length === 0 ? (
+                            <div className="text-center py-8 text-sm text-muted-foreground">No active deals.</div>
+                        ) : (
+                            <div className="space-y-4">
+                                {deals.map((deal, i) => (
+                                    <div key={deal._id} className="flex justify-between items-center pb-2 border-b last:border-0 last:pb-0">
                                         <div>
-                                            <h3 className="font-semibold">Logistics Active</h3>
-                                            <p className="text-sm text-primary-foreground/80 mt-1">
-                                                Pickup arriving in <strong>2 hours</strong>.
+                                            <p className="font-medium text-sm">Sale: {deal.listing_id?.waste_type || "Unknown Listing"}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {deal.quantity} diverted • {deal.co2_saved?.toFixed(1)}t CO2 saved
                                             </p>
+                                            <p className="text-xs text-primary mt-0.5">{deal.status}</p>
                                         </div>
+                                        <Button variant="ghost" size="sm">View</Button>
                                     </div>
-                                </CardContent>
-                            </Card>
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Compliance Docs</CardTitle>
-                        <CardDescription>Auto-generated transfer notes.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            {[1, 2, 3].map((doc) => (
-                                <div key={doc} className="flex items-center gap-3 p-3 rounded-lg border hover:border-primary/50 cursor-pointer transition-colors group">
-                                    <div className="p-2 bg-primary/10 rounded group-hover:bg-primary/20 text-primary">
-                                        <FileText className="h-4 w-4" />
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium">Transfer_Note_#80{doc}</p>
-                                        <p className="text-xs text-muted-foreground">Generated 2d ago</p>
-                                    </div>
-                                </div>
-                            ))}
+                <Card className="bg-primary text-primary-foreground border-none">
+                    <CardContent className="pt-6">
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-white/20 rounded-lg">
+                                <Truck className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold">Logistics Active</h3>
+                                <p className="text-sm text-primary-foreground/80 mt-1">
+                                    Pickup arriving in <strong>2 hours</strong>.
+                                </p>
+                            </div>
                         </div>
-                        <Button variant="outline" className="w-full mt-4">View All Archive</Button>
                     </CardContent>
                 </Card>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Compliance Docs</CardTitle>
+                    <CardDescription>Auto-generated transfer notes.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        {[1, 2, 3].map((doc) => (
+                            <div key={doc} className="flex items-center gap-3 p-3 rounded-lg border hover:border-primary/50 cursor-pointer transition-colors group">
+                                <div className="p-2 bg-primary/10 rounded group-hover:bg-primary/20 text-primary">
+                                    <FileText className="h-4 w-4" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium">Transfer_Note_#80{doc}</p>
+                                    <p className="text-xs text-muted-foreground">Generated 2d ago</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <Button variant="outline" className="w-full mt-4">View All Archive</Button>
+                </CardContent>
+            </Card>
         </div>
     )
 }

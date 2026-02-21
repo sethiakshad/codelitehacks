@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 
 const emissionFactorSchema = new mongoose.Schema({
   waste_type: String,
-  co2_saved_per_ton: Number,
+  virgin_emission_factor: Number,
+  recycled_emission_factor: Number,
   landfill_diversion_factor: Number,
 }, { timestamps: true });
 
