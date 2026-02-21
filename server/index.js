@@ -13,6 +13,7 @@ import wasteProfileRoutes from "./routes/wasteProfiles.js";
 import productionScheduleRoutes from "./routes/productionSchedules.js";
 import wasteRatioRoutes from "./routes/wasteRatios.js";
 import emissionFactorRoutes from "./routes/emissionFactors.js";
+import requirementRoutes from "./routes/requirements.js";
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use("/api/waste-profiles", wasteProfileRoutes);
 app.use("/api/production-schedules", productionScheduleRoutes);
 app.use("/api/waste-ratios", wasteRatioRoutes);
 app.use("/api/emission-factors", emissionFactorRoutes);
+app.use("/api/requirements", requirementRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

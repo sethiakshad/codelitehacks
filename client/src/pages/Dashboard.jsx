@@ -1,9 +1,10 @@
-/* eslint-disable no-unused-vars */
-import { motion } from "framer-motion"
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card"
-import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, ArrowRight, Truck, ClipboardList, Plus, Pencil } from "lucide-react"
+import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, ArrowRight, Truck, ClipboardList, Plus, Pencil, X, Trash2 } from "lucide-react"
 import { Button } from "../components/Button"
 import { Link } from "react-router-dom"
+import { api } from "../lib/api"
 
 function MatchRing({ percent }) {
     const radius = 20
@@ -30,15 +31,78 @@ function MatchRing({ percent }) {
 }
 
 export default function Dashboard() {
-    const requirements = [
-        { material: "Fly Ash (Grade I)", qty: "40 tons/mo", priority: "High", matched: true },
-        { material: "Recycled Steel Rebar", qty: "8 tons/mo", priority: "Medium", matched: true },
-        { material: "HDPE Granules", qty: "2 tons/mo", priority: "High", matched: false },
-        { material: "Waste Heat (>200°C)", qty: "Continuous", priority: "Low", matched: false },
-    ]
+    const [requirements, setRequirements] = useState([])
+    const [loadingReqs, setLoadingReqs] = useState(true)
+
+    // Modal state
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [editId, setEditId] = useState(null)
+    const [formData, setFormData] = useState({ material: "", qty: "", priority: "Medium" })
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    useEffect(() => {
+        fetchRequirements()
+    }, [])
+
+    const fetchRequirements = async () => {
+        try {
+            const res = await api.get("/api/requirements")
+            setRequirements(res.data)
+        } catch (err) {
+            console.error("Failed to fetch requirements:", err)
+        } finally {
+            setLoadingReqs(false)
+        }
+    }
+
+    const handleOpenModal = (req = null) => {
+        if (req) {
+            setEditId(req._id)
+            setFormData({ material: req.material, qty: req.qty, priority: req.priority })
+        } else {
+            setEditId(null)
+            setFormData({ material: "", qty: "", priority: "Medium" })
+        }
+        setIsModalOpen(true)
+    }
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false)
+        setEditId(null)
+    }
+
+    const handleSaveRequirement = async (e) => {
+        e.preventDefault()
+        setIsSubmitting(true)
+        try {
+            if (editId) {
+                await api.put(`/api/requirements/${editId}`, formData)
+            } else {
+                await api.post("/api/requirements", formData)
+            }
+            await fetchRequirements()
+            handleCloseModal()
+        } catch (err) {
+            console.error("Failed to save requirement:", err)
+            alert(err.message || "Failed to save requirement.")
+        } finally {
+            setIsSubmitting(false)
+        }
+    }
+
+    const handleDeleteRequirement = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this requirement?")) return
+        try {
+            await api.delete(`/api/requirements/${id}`)
+            await fetchRequirements()
+        } catch (err) {
+            console.error("Failed to delete requirement:", err)
+            alert(err.message || "Failed to delete requirement.")
+        }
+    }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 relative">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">EcoMarket Dashboard</h1>
@@ -79,39 +143,124 @@ export default function Dashboard() {
                             <CardDescription>Raw materials your factory needs. AI matches suppliers automatically.</CardDescription>
                         </div>
                     </div>
-                    <Button size="sm" variant="outline" className="gap-1"><Plus className="w-3.5 h-3.5" /> Add Requirement</Button>
+                    <Button size="sm" variant="outline" className="gap-1" onClick={() => handleOpenModal()}>
+                        <Plus className="w-3.5 h-3.5" /> Add Requirement
+                    </Button>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {requirements.map((req, i) => (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.08 * i }}
-                                key={i}
-                                className="flex items-center justify-between p-4 border rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors group"
-                            >
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-semibold text-sm">{req.material}</p>
-                                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${req.priority === "High" ? "bg-red-500/10 text-red-500" :
+                    {loadingReqs ? (
+                        <div className="text-sm text-muted-foreground py-4">Loading requirements...</div>
+                    ) : requirements.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                            <p className="text-sm mb-2">No requirements added yet.</p>
+                            <Button variant="outline" size="sm" onClick={() => handleOpenModal()}>
+                                Add Your First Requirement
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {requirements.map((req, i) => (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.08 * i }}
+                                    key={req._id}
+                                    className="flex items-center justify-between p-4 border rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors group"
+                                >
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold text-sm">{req.material}</p>
+                                            <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${req.priority === "High" ? "bg-red-500/10 text-red-500" :
                                                 req.priority === "Medium" ? "bg-amber-500/10 text-amber-500" :
                                                     "bg-blue-500/10 text-blue-500"
-                                            }`}>{req.priority}</span>
+                                                }`}>{req.priority}</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">Qty: {req.qty}</p>
+                                        <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1 ${req.matched ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                                            {req.matched ? <><BadgeCheck className="w-3 h-3" /> Supplier matched</> : "Searching..."}
+                                        </span>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">{req.qty}</p>
-                                    <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1 ${req.matched ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                                        {req.matched ? <><BadgeCheck className="w-3 h-3" /> Supplier matched</> : "Searching..."}
-                                    </span>
-                                </div>
-                                <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Pencil className="w-3.5 h-3.5" />
-                                </Button>
-                            </motion.div>
-                        ))}
-                    </div>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 border border-transparent" onClick={() => handleOpenModal(req)}>
+                                            <Pencil className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteRequirement(req._id)}>
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
+
+            {/* Add/Edit Modal */}
+            <AnimatePresence>
+                {isModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="w-full max-w-md bg-card border rounded-xl shadow-lg"
+                        >
+                            <form onSubmit={handleSaveRequirement}>
+                                <div className="flex items-center justify-between p-4 border-b">
+                                    <h2 className="font-semibold">{editId ? "Edit" : "Add"} Requirement</h2>
+                                    <Button type="button" variant="ghost" size="sm" className="w-8 h-8 p-0" onClick={handleCloseModal}>
+                                        <X className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                                <div className="p-4 space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Material / Waste Needed</label>
+                                        <input
+                                            required
+                                            type="text"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                            placeholder="e.g. Fly Ash, Steel Scrap"
+                                            value={formData.material}
+                                            onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Monthly Quantity</label>
+                                        <input
+                                            required
+                                            type="text"
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                            placeholder="e.g. 50 tons, 1000 L"
+                                            value={formData.qty}
+                                            onChange={(e) => setFormData({ ...formData, qty: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Priority</label>
+                                        <select
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                            value={formData.priority}
+                                            onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                                        >
+                                            <option value="Low">Low</option>
+                                            <option value="Medium">Medium</option>
+                                            <option value="High">High</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-end gap-2 p-4 border-t bg-muted/20">
+                                    <Button type="button" variant="outline" onClick={handleCloseModal} disabled={isSubmitting}>
+                                        Cancel
+                                    </Button>
+                                    <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting ? "Saving..." : "Save Requirement"}
+                                    </Button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
