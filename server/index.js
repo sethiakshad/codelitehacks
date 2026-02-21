@@ -18,10 +18,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-<<<<<<< HEAD
-app.listen(process.env.PORT || 3000, () => {
-    console.log(`Server codelite is running on port ${process.env.PORT}`);
-=======
+// <<<<<<< HEAD
+// app.listen(process.env.PORT || 3000, () => {
+//     console.log(`Server codelite is running on port ${process.env.PORT}`);
+// =======
 // Health check
 app.get("/", (req, res) => {
     res.json({ status: "ok", message: "CODELITE API is running." });
@@ -38,5 +38,5 @@ app.use("/api/emission-factors", emissionFactorRoutes);
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
->>>>>>> db-design
+// >>>>>>> db-design
 });
