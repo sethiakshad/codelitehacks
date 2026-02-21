@@ -4,6 +4,8 @@ import cors from "cors";
 
 dotenv.config();
 
+import connectDB from "./config/database.js";
+
 // Routes
 import authRoutes from "./routes/auth.js";
 import factoryRoutes from "./routes/factories.js";
@@ -14,9 +16,17 @@ import emissionFactorRoutes from "./routes/emissionFactors.js";
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Middleware — must be before routes
+app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Connect to MongoDB
+connectDB();
 
 // Health check
 app.get("/", (req, res) => {

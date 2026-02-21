@@ -23,7 +23,7 @@ export default function Login() {
         try {
             const data = await api.post("/api/auth/login", formData)
             login(data.token, data.user)
-            navigate("/producer")
+            navigate("/dashboard")
         } catch (err) {
             setError(err.message || "Invalid email or password.")
         } finally {

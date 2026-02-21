@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */
+
 import { motion } from "framer-motion"
 import { ArrowRight, Leaf, ShieldCheck, Zap } from "lucide-react"
 import { Button } from "../components/Button"
@@ -43,12 +43,12 @@ export default function Landing() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.3 }}
                 >
-                    <Link to="/producer" className="w-full">
+                    <Link to="/dashboard" className="w-full">
                         <Button size="lg" className="w-full text-base h-12 gap-2">
                             Start Listing <ArrowRight className="h-4 w-4" />
                         </Button>
                     </Link>
-                    <Link to="/buyer" className="w-full">
+                    <Link to="/dashboard" className="w-full">
                         <Button size="lg" variant="outline" className="w-full text-base h-12">
                             Find Materials
                         </Button>

@@ -38,7 +38,6 @@ export default function CreateListing() {
 
     const handleNext = (e) => { e.preventDefault(); setStep(s => s + 1) }
     const handleBack = () => setStep(s => s - 1)
-
     const handleSubmit = async (e) => {
         e.preventDefault()
         setError("")
@@ -149,6 +148,7 @@ export default function CreateListing() {
                                             </select>
                                         </div>
                                     </div>
+
                                 </motion.div>
                             )}
 
@@ -211,6 +211,12 @@ export default function CreateListing() {
                                 </motion.div>
                             )}
                         </AnimatePresence>
+
+                        {error && (
+                            <div className="bg-red-500/10 border-red-500/50 text-red-500 border p-3 rounded-md text-sm mt-4">
+                                {error}
+                            </div>
+                        )}
 
                         <div className="flex justify-between mt-8 pt-4 border-t">
                             <Button type="button" variant="ghost" onClick={handleBack} disabled={step === 1 || isSubmitting}>Back</Button>
