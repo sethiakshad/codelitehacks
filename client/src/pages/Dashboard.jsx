@@ -76,8 +76,8 @@ export default function Dashboard() {
     const [aiMatchesLoading, setAiMatchesLoading] = useState(false)
 
     useEffect(() => {
-        // Initialize Socket.IO connection
-        const newSocket = io(import.meta.env.VITE_API_URL || "http://localhost:4000")
+        const socketUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:4000`
+        const newSocket = io(socketUrl)
         setSocket(newSocket)
 
         if (user) {
@@ -96,13 +96,19 @@ export default function Dashboard() {
         })
 
         newSocket.on("receive_message", (message) => {
-            if (activeChatRef.current && activeChatRef.current._id === message.deal_id) {
+            const currentChatId = activeChatRef.current?._id?.toString() || activeChatRef.current?.toString();
+            const messageChatId = message.deal_id?._id?.toString() || message.deal_id?.toString();
+
+            if (currentChatId && currentChatId === messageChatId) {
                 setMessages((prev) => [...(prev || []), message])
             }
         })
 
         newSocket.on("message_sent", (message) => {
-            if (activeChatRef.current && activeChatRef.current._id === message.deal_id) {
+            const currentChatId = activeChatRef.current?._id?.toString() || activeChatRef.current?.toString();
+            const messageChatId = message.deal_id?._id?.toString() || message.deal_id?.toString();
+
+            if (currentChatId && currentChatId === messageChatId) {
                 setMessages((prev) => [...(prev || []), message])
             }
         })

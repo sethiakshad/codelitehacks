@@ -36,8 +36,10 @@ io.on("connection", (socket) => {
 
     // Client can emit "identify" passing their user ID to join a private room
     socket.on("identify", (userId) => {
-        socket.join(userId);
-        console.log(`User ${userId} joined their personal room.`);
+        if (!userId) return;
+        const roomName = userId.toString();
+        socket.join(roomName);
+        console.log(`User ${roomName} joined their personal room.`);
     });
 
     // Chat Message Event
@@ -49,8 +51,8 @@ io.on("connection", (socket) => {
             // Save to DB
             const newMessage = await Message.create({ deal_id, sender_id, receiver_id, text });
 
-            // Deliver to the receiver in real-time
-            io.to(receiver_id).emit("receive_message", newMessage);
+            // Deliver to the receiver in real-time — use string room name
+            io.to(receiver_id.toString()).emit("receive_message", newMessage);
 
             // Send back acknowledgment to the sender
             socket.emit("message_sent", newMessage);
