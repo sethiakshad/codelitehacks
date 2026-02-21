@@ -1,11 +1,42 @@
 /* eslint-disable no-unused-vars */
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card"
-import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, ArrowRight, Truck } from "lucide-react"
+import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, ArrowRight, Truck, ClipboardList, Plus, Pencil } from "lucide-react"
 import { Button } from "../components/Button"
 import { Link } from "react-router-dom"
 
+function MatchRing({ percent }) {
+    const radius = 20
+    const circumference = 2 * Math.PI * radius
+    const offset = circumference - (percent / 100) * circumference
+    const color = percent >= 90 ? "text-emerald-500" : percent >= 75 ? "text-amber-400" : "text-orange-500"
+    return (
+        <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: 56, height: 56 }}>
+            <svg width="56" height="56" viewBox="0 0 56 56" className="-rotate-90">
+                <circle cx="28" cy="28" r={radius} fill="none" stroke="currentColor" strokeWidth="4" className="text-muted/40" />
+                <motion.circle
+                    cx="28" cy="28" r={radius} fill="none" strokeWidth="4" strokeLinecap="round"
+                    className={color}
+                    stroke="currentColor"
+                    strokeDasharray={circumference}
+                    initial={{ strokeDashoffset: circumference }}
+                    animate={{ strokeDashoffset: offset }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                />
+            </svg>
+            <span className={`absolute text-xs font-bold ${color}`}>{percent}%</span>
+        </div>
+    )
+}
+
 export default function Dashboard() {
+    const requirements = [
+        { material: "Fly Ash (Grade I)", qty: "40 tons/mo", priority: "High", matched: true },
+        { material: "Recycled Steel Rebar", qty: "8 tons/mo", priority: "Medium", matched: true },
+        { material: "HDPE Granules", qty: "2 tons/mo", priority: "High", matched: false },
+        { material: "Waste Heat (>200°C)", qty: "Continuous", priority: "Low", matched: false },
+    ]
+
     return (
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -37,6 +68,50 @@ export default function Dashboard() {
                     </Card>
                 ))}
             </div>
+
+            {/* My Requirements Section */}
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <ClipboardList className="w-5 h-5 text-primary" />
+                        <div>
+                            <CardTitle>My Requirements</CardTitle>
+                            <CardDescription>Raw materials your factory needs. AI matches suppliers automatically.</CardDescription>
+                        </div>
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-1"><Plus className="w-3.5 h-3.5" /> Add Requirement</Button>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {requirements.map((req, i) => (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.08 * i }}
+                                key={i}
+                                className="flex items-center justify-between p-4 border rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors group"
+                            >
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-semibold text-sm">{req.material}</p>
+                                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${req.priority === "High" ? "bg-red-500/10 text-red-500" :
+                                                req.priority === "Medium" ? "bg-amber-500/10 text-amber-500" :
+                                                    "bg-blue-500/10 text-blue-500"
+                                            }`}>{req.priority}</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">{req.qty}</p>
+                                    <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1 ${req.matched ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                                        {req.matched ? <><BadgeCheck className="w-3 h-3" /> Supplier matched</> : "Searching..."}
+                                    </span>
+                                </div>
+                                <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                            </motion.div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
@@ -75,7 +150,7 @@ export default function Dashboard() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Marketplace (Buying)</CardTitle>
-                        <CardDescription>Available materials based on your profile.</CardDescription>
+                        <CardDescription>AI-matched materials based on your requirements.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
@@ -83,30 +158,34 @@ export default function Dashboard() {
                                 { material: "Steel Offcuts (Premium Grade)", seller: "Tata Motors Plant C", distance: "45 km", qty: "12 tons/mo", match: 98, eco: "2.4t CO2 saved" },
                                 { material: "HDPE Packaging Waste", seller: "Reliance Retail Dist", distance: "12 km", qty: "500 kg/mo", match: 92, eco: "0.8t CO2 saved" },
                                 { material: "Industrial Heat Exchanger Output", seller: "ChemCorp Refinery", distance: "8 km", qty: "Continuous", match: 86, eco: "12 MWh saved" },
-                            ].map((match, i) => (
+                            ].map((item, i) => (
                                 <motion.div
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.1 * i }}
                                     key={i}
-                                    className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between p-4 border rounded-lg bg-card hover:border-primary/50 transition-all shadow-sm"
+                                    className="flex items-start gap-4 p-4 border rounded-lg bg-card hover:border-primary/50 transition-all shadow-sm"
                                 >
-                                    <div className="space-y-1 w-full">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className="font-semibold">{match.material}</h3>
-                                            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-                                                {match.match}% Match
-                                            </span>
+                                    <MatchRing percent={item.match} />
+                                    <div className="flex-1 min-w-0 space-y-1.5">
+                                        <h3 className="font-semibold text-sm leading-tight">{item.material}</h3>
+                                        <p className="text-xs text-muted-foreground">{item.seller} • {item.distance} away</p>
+                                        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                            <motion.div
+                                                className={`h-full rounded-full ${item.match >= 90 ? 'bg-emerald-500' : item.match >= 75 ? 'bg-amber-400' : 'bg-orange-500'}`}
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${item.match}%` }}
+                                                transition={{ duration: 0.6, delay: 0.15 * i }}
+                                            />
                                         </div>
-                                        <p className="text-xs text-muted-foreground">{match.seller} • {match.distance} away</p>
-                                        <div className="flex items-center gap-3 mt-1 text-xs">
-                                            <span className="font-medium bg-muted px-2 py-0.5 rounded">Qty: {match.qty}</span>
+                                        <div className="flex items-center gap-3 text-xs">
+                                            <span className="font-medium bg-muted px-2 py-0.5 rounded">Qty: {item.qty}</span>
                                             <span className="flex items-center gap-1 text-emerald-500 font-medium">
-                                                <BadgeCheck className="w-3 h-3" /> {match.eco}
+                                                <BadgeCheck className="w-3 h-3" /> {item.eco}
                                             </span>
                                         </div>
                                     </div>
-                                    <Button size="sm" className="w-full sm:w-auto flex-shrink-0 gap-1 mt-2 sm:mt-0">Deal <ArrowRight className="w-3 h-3" /></Button>
+                                    <Button size="sm" className="flex-shrink-0 gap-1 self-center">Deal <ArrowRight className="w-3 h-3" /></Button>
                                 </motion.div>
                             ))}
                         </div>
