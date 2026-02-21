@@ -1,19 +1,16 @@
+import mongoose from "mongoose";
 import dotenv from "dotenv";
+
 dotenv.config();
 
-import pg from "pg";
-const { Pool } = pg;
-const pool = new Pool({
-    user: process.env.POSTGRE_USER,
-    host: process.env.POSTGRE_HOST,
-    database: process.env.POSTGRE_DATABASE,
-    password: process.env.POSTGRE_PASSWORD,
-    port: Number(process.env.POSTGRE_PORT),
-    ssl: {
-        rejectUnauthorized: false
+const connectDB = async () => {
+    try {
+        const conn = await mongoose.connect(process.env.MONGO_URI);
+        console.log(`MongoDB Connected: ${conn.connection.host}`);
+    } catch (error) {
+        console.error(`Error: ${error.message}`);
+        process.exit(1);
     }
-});
+};
 
-console.log();
-
-export default pool;
+export default connectDB;
