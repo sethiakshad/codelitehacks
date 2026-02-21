@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card"
 import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, ArrowRight, Truck, ClipboardList, Plus, Pencil, X, Trash2, MessageSquare, Send } from "lucide-react"
@@ -52,7 +52,20 @@ export default function Dashboard() {
 
     // Chat state
     const [activeChat, setActiveChat] = useState(null) // Deal object
+    const activeChatRef = useRef(null)
+    useEffect(() => {
+        activeChatRef.current = activeChat
+    }, [activeChat])
+
     const [messages, setMessages] = useState([])
+    const messagesEndRef = useRef(null)
+
+    useEffect(() => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+        }
+    }, [messages])
+
     const [newMessage, setNewMessage] = useState("")
     const [formData, setFormData] = useState({ material: "", qty: "", priority: "Medium" })
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -78,7 +91,15 @@ export default function Dashboard() {
         })
 
         newSocket.on("receive_message", (message) => {
-            setMessages((prev) => [...prev, message])
+            if (activeChatRef.current && activeChatRef.current._id === message.deal_id) {
+                setMessages((prev) => [...(prev || []), message])
+            }
+        })
+
+        newSocket.on("message_sent", (message) => {
+            if (activeChatRef.current && activeChatRef.current._id === message.deal_id) {
+                setMessages((prev) => [...(prev || []), message])
+            }
         })
 
         return () => newSocket.disconnect()
@@ -218,9 +239,6 @@ export default function Dashboard() {
             receiver_id: receiverId,
             text: newMessage
         }
-
-        const optimisticMsg = { ...msgData, _id: Date.now().toString(), createdAt: new Date().toISOString() }
-        setMessages((prev) => [...prev, optimisticMsg])
 
         socket.emit("send_message", msgData)
         setNewMessage("")
@@ -625,6 +643,7 @@ export default function Dashboard() {
                                         </div>
                                     )
                                 })}
+                                <div ref={messagesEndRef} />
                             </div>
 
                             {/* Chat Input */}
