@@ -16,7 +16,16 @@ export default function (io) {
             const listing = await FactoryWasteProfile.findById(listing_id).populate("factory_id");
             if (!listing) return res.status(404).json({ message: "Listing not found." });
 
-            const sellerUser = await User.findOne({ factory_id: listing.factory_id });
+            let sellerUser = null;
+            if (listing.user_id) {
+                sellerUser = await User.findById(listing.user_id);
+            } else if (listing.factory_id) {
+                // Fallback for older listings: find the user who manages this factory by matching emails
+                const factory = await Factory.findById(listing.factory_id);
+                if (factory && factory.email) {
+                    sellerUser = await User.findOne({ email: factory.email });
+                }
+            }
 
             // Fetch Emission Factors for the material
             let virgin_ef = 2.5; // fallbacks if missing
@@ -35,7 +44,7 @@ export default function (io) {
 
             const deal = await Deal.create({
                 buyer_id: req.user.id,
-                seller_id: sellerUser ? sellerUser._id : listing.factory_id, // fallback if user not found
+                seller_id: sellerUser ? sellerUser._id : (listing.user_id || listing.factory_id),
                 listing_id: listing._id,
                 quantity: Number(quantity),
                 co2_saved,

@@ -4,12 +4,15 @@ import auth from "../middleware/auth.js";
 
 const router = Router();
 
-// GET /api/waste-profiles — list all (optionally filter by factory)
+// GET /api/waste-profiles — list all (optionally filter by factory or user)
 router.get("/", auth, async (req, res) => {
     try {
-        const { factory_id } = req.query;
-        const query = factory_id ? { factory_id } : {};
-        const profiles = await FactoryWasteProfile.find(query).sort({ createdAt: -1 });
+        const { factory_id, user_id } = req.query;
+        let query = {};
+        if (factory_id) query.factory_id = factory_id;
+        if (user_id) query.user_id = user_id;
+
+        const profiles = await FactoryWasteProfile.find(query).sort({ createdAt: -1 }).populate("user_id", "name email");
         res.status(200).json({ data: profiles });
     } catch (err) {
         console.error(err);
@@ -31,13 +34,14 @@ router.get("/:id", auth, async (req, res) => {
 
 // POST /api/waste-profiles
 router.post("/", auth, async (req, res) => {
-    const { factory_id, waste_type, average_quantity_per_month, hazardous, storage_condition } = req.body;
-    if (!factory_id || !waste_type) {
-        return res.status(400).json({ message: "factory_id and waste_type are required." });
+    const { factory_id, user_id, waste_type, average_quantity_per_month, hazardous, storage_condition } = req.body;
+    if (!waste_type) {
+        return res.status(400).json({ message: "waste_type is required." });
     }
     try {
         const profile = await FactoryWasteProfile.create({
             factory_id,
+            user_id: user_id || req.user.id,
             waste_type,
             average_quantity_per_month,
             hazardous: hazardous || false,

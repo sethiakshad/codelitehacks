@@ -9,6 +9,7 @@ router.get("/", async (req, res) => {
     try {
         const listings = await FactoryWasteProfile.find()
             .populate("factory_id", "name city state")
+            .populate("user_id", "name email")
             .sort({ createdAt: -1 });
 
         // Let's attach some emission factor math to the listing so the UI can show "potential eco savings"

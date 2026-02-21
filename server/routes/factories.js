@@ -1,5 +1,6 @@
 import { Router } from "express";
 import Factory from "../models/factories.model.js";
+import User from "../models/users.model.js";
 import auth from "../middleware/auth.js";
 import multer from "multer";
 import fs from "fs";
@@ -65,6 +66,10 @@ router.post("/", auth, upload.single("licenseFile"), async (req, res) => {
             hazardous_waste_license: hazardous_waste_license || false,
             iso_certified: iso_certified || false
         });
+
+        if (req.user && req.user.id) {
+            await User.findByIdAndUpdate(req.user.id, { factory_id: factory._id });
+        }
 
         res.status(201).json({ data: factory, message: "Factory created successfully." });
     } catch (err) {

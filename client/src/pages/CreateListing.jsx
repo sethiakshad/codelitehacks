@@ -44,7 +44,8 @@ export default function CreateListing() {
         setIsSubmitting(true)
         try {
             await api.post("/api/waste-profiles", {
-                factory_id: user.id,
+                user_id: user.id || user._id,
+                factory_id: user.factory_id || user.id || user._id,
                 waste_type: formData.waste_type,
                 waste_category: formData.waste_category,
                 average_quantity_per_month: parseFloat(formData.average_quantity_per_month) || 0,

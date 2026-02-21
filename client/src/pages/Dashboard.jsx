@@ -96,7 +96,7 @@ export default function Dashboard() {
     const fetchMyListings = async () => {
         if (!user) return
         try {
-            const res = await api.get(`/api/waste-profiles?factory_id=${user.id || user._id}`)
+            const res = await api.get(`/api/waste-profiles?user_id=${user.id || user._id}`)
             setMyListings(res.data)
         } catch (err) {
             console.error("Failed to fetch my listings:", err)
@@ -359,9 +359,18 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Your Listings (Selling)</CardTitle>
-                        <CardDescription>Your recently added industrial byproducts.</CardDescription>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <div className="space-y-1">
+                            <CardTitle>Your Listings (Selling)</CardTitle>
+                            <CardDescription>Your recently added industrial byproducts.</CardDescription>
+                        </div>
+                        {myListings.length > 0 && (
+                            <Link to="/list-waste">
+                                <Button size="sm" variant="outline" className="h-8 gap-1 hidden sm:flex">
+                                    <Plus className="w-4 h-4" /> Add Listing
+                                </Button>
+                            </Link>
+                        )}
                     </CardHeader>
                     <CardContent>
                         {myListings.length === 0 ? (
@@ -416,7 +425,7 @@ export default function Dashboard() {
                                     >
                                         <div className="flex-1 min-w-0 space-y-1.5">
                                             <h3 className="font-semibold text-sm leading-tight">{item.waste_type}</h3>
-                                            <p className="text-xs text-muted-foreground">{item.factory_id?.name || "Unknown Factory"} • {item.factory_id?.city || "Location unknown"}</p>
+                                            <p className="text-xs text-muted-foreground">{item.user_id?.name || item.factory_id?.name || "Independent Seller"} • {item.factory_id?.city || "Verified Source"}</p>
                                             <div className="flex items-center gap-3 text-xs">
                                                 <span className="font-medium bg-muted px-2 py-0.5 rounded">Avg Qty: {item.average_quantity_per_month} /mo</span>
                                                 <span className="flex items-center gap-1 text-emerald-500 font-medium">
@@ -460,11 +469,10 @@ export default function Dashboard() {
                                                 </p>
                                                 <p className="text-xs text-primary mt-0.5">Status: {deal.status}</p>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
                                                 {isSeller && isPending && (
-                                                    <Button size="sm" onClick={() => handleApproveDeal(deal._id)}>Approve</Button>
+                                                    <Button size="sm" className="h-8" onClick={() => handleApproveDeal(deal._id)}>Approve</Button>
                                                 )}
-                                                <Button variant="ghost" size="sm">View</Button>
                                             </div>
                                         </div>
                                     )
