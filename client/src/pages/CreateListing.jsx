@@ -99,7 +99,7 @@ export default function CreateListing() {
                 <h2 className="text-3xl font-bold">Advanced Listing Created!</h2>
                 <p className="text-muted-foreground">Your industrial waste material is now live. Our AI matching engine is factoring in distance, volume, and material ontology mappings to find buyers.</p>
                 <div className="pt-6">
-                    <Link to="/producer" className="w-full inline-block">
+                    <Link to="/dashboard" className="w-full inline-block">
                         <Button className="w-full">Return to Dashboard</Button>
                     </Link>
                 </div>
