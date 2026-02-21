@@ -27,7 +27,7 @@ export default function Layout() {
                     <nav className="hidden lg:flex items-center gap-6">
                         {isAuthenticated ? (
                             <>
-                                <Link to="/producer" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                                <Link to="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                                     Dashboard
                                 </Link>
                                 <Link to="/list-waste" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
