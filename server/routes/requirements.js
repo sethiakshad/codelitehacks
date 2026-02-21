@@ -104,28 +104,31 @@ router.get("/:id/matches", auth, async (req, res) => {
             id: l._id,
             material: l.waste_type,
             quantity: l.average_quantity_per_month,
+            unit: l.unit,
             seller: l.factory_id?.name || l.user_id?.name || "Independent Seller",
-            location: l.factory_id?.city || "Unknown Location"
+            location: l.factory_id?.city || "Unknown Location",
+            availability: l.availability_status || "Immediate"
         }));
 
         const prompt = `You are an expert Circular Economy AI Matchmaker.
 I have a buyer who needs the following material:
 - Material: ${requirement.material}
 - Quantity Needed: ${requirement.qty}
-- Priority: ${requirement.priority}
+- Priority/Timing: ${requirement.priority}
 
-Here are the available marketplace listings:
+Here are the available marketplace listings (potential suppliers):
 ${JSON.stringify(listingsContext, null, 2)}
 
 Your task is to analyze every single listing and determine how well it matches the buyer's requirement. 
-- Exact material matches should score highest (90-100%).
-- Similar or substituted materials score moderately.
-- Completely unrelated materials score 0%.
-- Consider quantity alignment as a secondary factor.
+Calculate a "match_percentage" (0 to 100) based strictly on these 4 factors:
+1. Material Match: Exact material matches are required for a high score. Substituted materials score lower.
+2. Volume Match: Does the supplier's quantity (and unit) closely align with the buyer's needed quantity? 
+3. Location / Distance: Assume buyers prefer "Nearby companies". If the locations seem geographically close or are in the same region, boost the score. 
+4. Timing Compatibility: Align the buyer's priority (High/Medium/Low) with the seller's availability.
 
-You must return EXACTLY a JSON array of objects, with NO markdown formatting, NO backticks, and NO additional text. 
-Format: [{"listing_id": "id string here", "match_percentage": 95, "reason": "Short 1 sentence reason explaining why this is a good match."}]
-Only include listings that have a score > 0. Sort the array descending by match_percentage.`;
+Return EXACTLY a JSON array of objects, with NO markdown formatting. 
+Format: [{"listing_id": "id string here", "match_percentage": 95, "reason": "Short 1 sentence reason explaining why this is a good match based on volume, location, and timing."}]
+Only return listings with a score > 0. Sort the array descending by match_percentage.`;
 
         // 4. Call Gemini GenAI SDK
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
