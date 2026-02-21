@@ -80,5 +80,36 @@ export default function (io) {
         }
     });
 
+    // PUT /api/deals/:id/status — Update deal status (e.g. Seller approves)
+    router.put("/:id/status", auth, async (req, res) => {
+        const { status } = req.body;
+
+        try {
+            const deal = await Deal.findById(req.params.id);
+            if (!deal) return res.status(404).json({ message: "Deal not found." });
+
+            // Only the seller can approve/complete the deal
+            if (deal.seller_id.toString() !== req.user.id && status === "Completed") {
+                return res.status(403).json({ message: "Only the seller can approve this deal." });
+            }
+
+            deal.status = status;
+            await deal.save();
+
+            // Notify the buyer
+            if (status === "Completed") {
+                io.to(deal.buyer_id.toString()).emit("deal_updated", {
+                    message: "Your deal has been approved by the seller!",
+                    deal
+                });
+            }
+
+            res.status(200).json({ data: deal, message: `Deal marked as ${status}.` });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: "Server error updating deal." });
+        }
+    });
+
     return router;
 }

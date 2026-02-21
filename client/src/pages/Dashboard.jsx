@@ -67,6 +67,11 @@ export default function Dashboard() {
             fetchDeals() // Refresh deals to compute new offsets
         })
 
+        newSocket.on("deal_updated", (data) => {
+            alert(`Deal Update: ${data.message}`)
+            fetchDeals()
+        })
+
         return () => newSocket.disconnect()
     }, [user])
 
@@ -132,6 +137,16 @@ export default function Dashboard() {
         } catch (err) {
             console.error(err)
             alert("Failed to initiate deal.")
+        }
+    }
+
+    const handleApproveDeal = async (dealId) => {
+        try {
+            await api.put(`/api/deals/${dealId}/status`, { status: "Completed" })
+            fetchDeals()
+        } catch (err) {
+            console.error(err)
+            alert("Failed to approve deal.")
         }
     }
 
@@ -428,18 +443,32 @@ export default function Dashboard() {
                             <div className="text-center py-8 text-sm text-muted-foreground">No active deals.</div>
                         ) : (
                             <div className="space-y-4">
-                                {deals.map((deal, i) => (
-                                    <div key={deal._id} className="flex justify-between items-center pb-2 border-b last:border-0 last:pb-0">
-                                        <div>
-                                            <p className="font-medium text-sm">Sale: {deal.listing_id?.waste_type || "Unknown Listing"}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {deal.quantity} diverted • {deal.co2_saved?.toFixed(1)}t CO2 saved
-                                            </p>
-                                            <p className="text-xs text-primary mt-0.5">{deal.status}</p>
+                                {deals.map((deal, i) => {
+                                    const isSeller = user && deal.seller_id && (deal.seller_id._id === user.id || deal.seller_id._id === user._id)
+                                    const isPending = deal.status === "Pending"
+
+                                    return (
+                                        <div key={deal._id} className="flex justify-between items-center pb-2 border-b last:border-0 last:pb-0">
+                                            <div>
+                                                {isSeller ? (
+                                                    <p className="font-medium text-sm">Sale: {deal.listing_id?.waste_type}</p>
+                                                ) : (
+                                                    <p className="font-medium text-sm">Purchase: {deal.listing_id?.waste_type}</p>
+                                                )}
+                                                <p className="text-xs text-muted-foreground">
+                                                    {deal.quantity} diverted • {deal.co2_saved?.toFixed(1)}t CO2 saved
+                                                </p>
+                                                <p className="text-xs text-primary mt-0.5">Status: {deal.status}</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {isSeller && isPending && (
+                                                    <Button size="sm" onClick={() => handleApproveDeal(deal._id)}>Approve</Button>
+                                                )}
+                                                <Button variant="ghost" size="sm">View</Button>
+                                            </div>
                                         </div>
-                                        <Button variant="ghost" size="sm">View</Button>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         )}
                     </CardContent>
