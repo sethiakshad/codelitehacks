@@ -11,6 +11,7 @@ export default function Register() {
     const [step, setStep] = useState(1)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState("")
+    const [licenseFile, setLicenseFile] = useState(null)
     const [formData, setFormData] = useState({
         name: "", industryType: "", location: "", email: "", password: ""
     })
@@ -32,14 +33,18 @@ export default function Register() {
             })
             login(data.token, data.user)
 
-            // Create factory record
-            await api.post("/api/factories", {
-                name: formData.name,
-                industry_type: formData.industryType,
-                email: formData.email,
-                city: formData.location.split(",")[0]?.trim() || "",
-                state: formData.location.split(",")[1]?.trim() || "",
-            })
+            // Create factory record with file upload
+            const factoryData = new FormData();
+            factoryData.append("name", formData.name);
+            factoryData.append("industry_type", formData.industryType);
+            factoryData.append("email", formData.email);
+            factoryData.append("city", formData.location.split(",")[0]?.trim() || "");
+            factoryData.append("state", formData.location.split(",")[1]?.trim() || "");
+            if (licenseFile) {
+                factoryData.append("licenseFile", licenseFile);
+            }
+
+            await api.post("/api/factories", factoryData)
 
             setStep(3) // Success
         } catch (err) {
@@ -154,7 +159,20 @@ export default function Register() {
                                             <h3 className="font-medium">Upload Regulatory Licenses</h3>
                                             <p className="text-sm text-muted-foreground mt-1">Upload State Pollution Control Board clearance documents (PDF).</p>
                                         </div>
-                                        <Button type="button" variant="outline" size="sm">Select Files</Button>
+                                        <div>
+                                            <input
+                                                type="file"
+                                                id="licenseUpload"
+                                                className="hidden"
+                                                accept=".pdf,.png,.jpg,.jpeg"
+                                                onChange={(e) => setLicenseFile(e.target.files[0])}
+                                            />
+                                            <label htmlFor="licenseUpload">
+                                                <Button type="button" variant="outline" size="sm" asChild>
+                                                    <span>{licenseFile ? licenseFile.name : "Select Files"}</span>
+                                                </Button>
+                                            </label>
+                                        </div>
                                     </div>
 
                                     <div className="flex items-center space-x-2">

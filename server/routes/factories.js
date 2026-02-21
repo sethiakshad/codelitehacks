@@ -1,6 +1,21 @@
 import { Router } from "express";
 import pool from "../config/database.js";
 import auth from "../middleware/auth.js";
+import multer from "multer";
+import fs from "fs";
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        if (!fs.existsSync("uploads")) {
+            fs.mkdirSync("uploads");
+        }
+        cb(null, "uploads/")
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + "-" + file.originalname)
+    }
+});
+const upload = multer({ storage: storage });
 
 const router = Router();
 
@@ -28,7 +43,7 @@ router.get("/:id", auth, async (req, res) => {
 });
 
 // POST /api/factories — create
-router.post("/", auth, async (req, res) => {
+router.post("/", auth, upload.single("licenseFile"), async (req, res) => {
     const {
         name, industry_type, registration_number, contact_person, email, phone,
         address, city, state, country, latitude, longitude,
