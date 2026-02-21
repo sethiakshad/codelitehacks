@@ -104,6 +104,6 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/deals", dealRoutesInit(io)); // Pass io to deals route
 
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
-    console.log(`Server (with Socket.IO) is running on port ${PORT}`);
+server.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT} — accessible at http://0.0.0.0:${PORT}`);
 });
