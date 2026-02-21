@@ -1,10 +1,32 @@
 /* eslint-disable no-unused-vars */
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card"
-import { BadgeCheck, Filter, ArrowRight, Truck } from "lucide-react"
+import { BadgeCheck, Filter, ArrowRight, Truck, Loader2 } from "lucide-react"
 import { Button } from "../components/Button"
+import { api } from "../lib/api"
 
 export default function BuyerDashboard() {
+    const [matches, setMatches] = useState([])
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        api.get("/api/waste-profiles")
+            .then(data => {
+                const profiles = data.data || []
+                // Mock AI match scores for demo purposes
+                const withScores = profiles.map(p => ({
+                    ...p,
+                    match: Math.floor(Math.random() * 20) + 80,
+                    eco: `${(p.average_quantity_per_month * 0.2).toFixed(1)}t CO2 saved`,
+                    seller: `Factory ID ${p.factory_id}`,
+                    distance: `${Math.floor(Math.random() * 50) + 5} km`
+                })).sort((a, b) => b.match - a.match)
+                setMatches(withScores)
+            })
+            .catch(err => console.error("Failed to fetch matches", err))
+            .finally(() => setLoading(false))
+    }, [])
     return (
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -25,28 +47,28 @@ export default function BuyerDashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {[
-                                { material: "Steel Offcuts (Premium Grade)", seller: "Tata Motors Plant C", distance: "45 km", qty: "12 tons/mo", match: 98, eco: "2.4t CO2 saved" },
-                                { material: "HDPE Packaging Waste", seller: "Reliance Retail Dist", distance: "12 km", qty: "500 kg/mo", match: 92, eco: "0.8t CO2 saved" },
-                                { material: "Industrial Heat Exchanger Output", seller: "ChemCorp Refinery", distance: "8 km", qty: "Continuous", match: 86, eco: "12 MWh saved" },
-                            ].map((match, i) => (
+                            {loading ? (
+                                <div className="flex justify-center p-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                            ) : matches.length === 0 ? (
+                                <div className="text-center p-8 text-muted-foreground">No matches found for your criteria.</div>
+                            ) : matches.map((match, i) => (
                                 <motion.div
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.1 * i }}
-                                    key={i}
+                                    key={match.id || i}
                                     className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between p-5 border rounded-xl bg-card hover:border-primary/50 transition-all shadow-sm"
                                 >
                                     <div className="space-y-1 w-full">
                                         <div className="flex items-center gap-2">
-                                            <h3 className="font-semibold text-lg">{match.material}</h3>
+                                            <h3 className="font-semibold text-lg">{match.waste_type}</h3>
                                             <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
                                                 {match.match}% Match
                                             </span>
                                         </div>
                                         <p className="text-sm text-muted-foreground">{match.seller} • {match.distance} away</p>
                                         <div className="flex items-center gap-3 mt-2 text-sm">
-                                            <span className="font-medium text-foreground bg-muted px-2 py-1 rounded">Qty: {match.qty}</span>
+                                            <span className="font-medium text-foreground bg-muted px-2 py-1 rounded">Qty: {match.average_quantity_per_month} {match.unit || "units/mo"}</span>
                                             <span className="flex items-center gap-1 text-emerald-500 font-medium">
                                                 <BadgeCheck className="w-4 h-4" /> {match.eco}
                                             </span>

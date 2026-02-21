@@ -4,11 +4,14 @@ import { Building2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/Card"
 import { Button } from "../components/Button"
 import { Link, useNavigate } from "react-router-dom"
+import { useAuth } from "../context/AuthContext"
+import { api } from "../lib/api"
 
 export default function Login() {
     const [formData, setFormData] = useState({ email: "", password: "" })
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState("")
+    const { login } = useAuth()
     const navigate = useNavigate()
 
     const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -18,20 +21,11 @@ export default function Login() {
         setError("")
         setIsSubmitting(true)
         try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/auth/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-            })
-            const data = await res.json()
-            if (!res.ok) {
-                setError(data.message || "Login failed.")
-            } else {
-                localStorage.setItem("token", data.token)
-                navigate("/producer")
-            }
-        } catch {
-            setError("Network error. Please try again.")
+            const data = await api.post("/api/auth/login", formData)
+            login(data.token, data.user)
+            navigate("/producer")
+        } catch (err) {
+            setError(err.message || "Invalid email or password.")
         } finally {
             setIsSubmitting(false)
         }
@@ -57,26 +51,19 @@ export default function Login() {
                         <form className="space-y-4" onSubmit={handleSubmit}>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Email Address</label>
-                                <input
-                                    type="email" name="email" value={formData.email} onChange={handleChange} required
+                                <input type="email" name="email" value={formData.email} onChange={handleChange} required
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                    placeholder="admin@factory.com"
-                                />
+                                    placeholder="admin@factory.com" />
                             </div>
-
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Password</label>
-                                <input
-                                    type="password" name="password" value={formData.password} onChange={handleChange} required
+                                <input type="password" name="password" value={formData.password} onChange={handleChange} required
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                    placeholder="••••••••"
-                                />
+                                    placeholder="••••••••" />
                             </div>
 
                             {error && (
-                                <div className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">
-                                    {error}
-                                </div>
+                                <div className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">{error}</div>
                             )}
 
                             <Button type="submit" className="w-full" disabled={isSubmitting}>
@@ -85,9 +72,7 @@ export default function Login() {
 
                             <p className="text-center text-sm text-muted-foreground pt-2">
                                 Don't have an account?{" "}
-                                <Link to="/register" className="text-primary hover:underline">
-                                    Register your factory
-                                </Link>
+                                <Link to="/register" className="text-primary hover:underline">Register your factory</Link>
                             </p>
                         </form>
                     </CardContent>
