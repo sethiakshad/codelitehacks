@@ -10,7 +10,8 @@ export function AuthProvider({ children }) {
     // Load user from token on mount
     useEffect(() => {
         if (token) {
-            fetch(`${import.meta.env.VITE_API_URL || "http://localhost:4000"}/api/auth/me`, {
+            const baseUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:4000`
+            fetch(`${baseUrl}/api/auth/me`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
                 .then(res => res.ok ? res.json() : Promise.reject())
