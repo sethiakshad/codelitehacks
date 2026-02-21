@@ -125,14 +125,14 @@ Format: [{"listing_id": "id", "match_percentage": 95, "reason": "reason here"}]`
         }
 
         // 5. Call SDK
-        const genAI = new GoogleGenAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const client = new GoogleGenAI({ apiKey });
 
         let result;
         try {
-            result = await model.generateContent({
+            result = await client.models.generateContent({
+                model: "models/gemini-flash-latest",
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: {
+                config: {
                     temperature: 0.1,
                     responseMimeType: "application/json"
                 }
@@ -142,8 +142,7 @@ Format: [{"listing_id": "id", "match_percentage": 95, "reason": "reason here"}]`
             return res.status(500).json({ message: "Gemini SDK Error: " + sdkErr.message });
         }
 
-        const response = await result.response;
-        let rawText = response.text() || "[]";
+        let rawText = result.text || "[]";
 
         // Clean markdown backticks
         if (rawText.includes("```json")) {
