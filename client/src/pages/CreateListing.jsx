@@ -118,8 +118,25 @@ export default function CreateListing() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Material / Waste Type</label>
-                                            <input type="text" name="waste_type" value={formData.waste_type} onChange={handle}
-                                                placeholder="e.g., Fly Ash" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required />
+                                            <select name="waste_type" value={formData.waste_type} onChange={handle}
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
+                                                <option value="" disabled>Select Material</option>
+                                                <option value="Plastic">Plastic</option>
+                                                <option value="Aluminum">Aluminum</option>
+                                                <option value="Steel">Steel</option>
+                                                <option value="Paper">Paper</option>
+                                                <option value="Glass">Glass</option>
+                                                <option value="Copper">Copper</option>
+                                                <option value="Cement">Cement</option>
+                                                <option value="FlyAsh">Fly Ash</option>
+                                                <option value="TextileWaste">Textile Waste</option>
+                                                <option value="ElectronicWaste">Electronic Waste</option>
+                                                <option value="Rubber">Rubber</option>
+                                                <option value="Wood">Wood</option>
+                                                <option value="Slag">Slag</option>
+                                                <option value="BatteryWaste">Battery Waste</option>
+                                                <option value="ChemicalSolvent">Chemical Solvent</option>
+                                            </select>
                                         </div>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Category</label>

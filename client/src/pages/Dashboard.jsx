@@ -388,14 +388,30 @@ export default function Dashboard() {
                                 <div className="p-4 space-y-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Material / Waste Needed</label>
-                                        <input
-                                            required
-                                            type="text"
-                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                            placeholder="e.g. Fly Ash, Steel Scrap"
+                                        <select
+                                            name="material"
                                             value={formData.material}
                                             onChange={(e) => setFormData({ ...formData, material: e.target.value })}
-                                        />
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                            required
+                                        >
+                                            <option value="" disabled>Select Material</option>
+                                            <option value="Plastic">Plastic</option>
+                                            <option value="Aluminum">Aluminum</option>
+                                            <option value="Steel">Steel</option>
+                                            <option value="Paper">Paper</option>
+                                            <option value="Glass">Glass</option>
+                                            <option value="Copper">Copper</option>
+                                            <option value="Cement">Cement</option>
+                                            <option value="FlyAsh">Fly Ash</option>
+                                            <option value="TextileWaste">Textile Waste</option>
+                                            <option value="ElectronicWaste">Electronic Waste</option>
+                                            <option value="Rubber">Rubber</option>
+                                            <option value="Wood">Wood</option>
+                                            <option value="Slag">Slag</option>
+                                            <option value="BatteryWaste">Battery Waste</option>
+                                            <option value="ChemicalSolvent">Chemical Solvent</option>
+                                        </select>
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Monthly Quantity</label>

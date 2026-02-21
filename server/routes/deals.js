@@ -1,6 +1,6 @@
 import { Router } from "express";
 import Deal from "../models/deals.model.js";
-import EmissionFactor from "../models/emissionFactors.model.js";
+import Formula from "../models/formulas.model.js";
 import FactoryWasteProfile from "../models/factoryWasteProfiles.model.js";
 import Factory from "../models/factories.model.js";
 import User from "../models/users.model.js";
@@ -28,14 +28,14 @@ export default function (io) {
                 }
             }
 
-            // Fetch Emission Factors for the material
+            // Fetch new Formula Factors for the material
             let virgin_ef = 2.5; // fallbacks if missing
             let recycled_ef = 0.8;
 
-            const efRecord = await EmissionFactor.findOne({ waste_type: listing.waste_type });
-            if (efRecord && efRecord.virgin_emission_factor && efRecord.recycled_emission_factor) {
-                virgin_ef = efRecord.virgin_emission_factor;
-                recycled_ef = efRecord.recycled_emission_factor;
+            const formulaObj = await Formula.findOne({ material: listing.waste_type });
+            if (formulaObj && formulaObj.virgin && formulaObj.recycled) {
+                virgin_ef = formulaObj.virgin;
+                recycled_ef = formulaObj.recycled;
             }
 
             // CO2 Saved Calculation
