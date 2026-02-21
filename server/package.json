@@ -1,0 +1,11 @@
+{
+  "name": "codelite",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run dev"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
