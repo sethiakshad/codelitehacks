@@ -1,8 +1,17 @@
-import { Outlet, Link } from "react-router-dom"
+import { Outlet, Link, useNavigate } from "react-router-dom"
 import { ThemeToggle } from "./ThemeToggle"
-import { Recycle } from "lucide-react"
+import { Recycle, LogOut, User } from "lucide-react"
+import { useAuth } from "../context/AuthContext"
 
 export default function Layout() {
+    const { user, isAuthenticated, logout } = useAuth()
+    const navigate = useNavigate()
+
+    const handleLogout = () => {
+        logout()
+        navigate("/")
+    }
+
     return (
         <div className="min-h-screen flex flex-col items-center">
             <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md justify-center flex">
@@ -15,10 +24,14 @@ export default function Layout() {
                     </Link>
 
                     <nav className="hidden lg:flex items-center gap-6">
-                        <Link to="/register" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                            Register
-                        </Link>
-                        <div className="h-4 w-px bg-border"></div>
+                        {!isAuthenticated && (
+                            <>
+                                <Link to="/register" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                                    Register
+                                </Link>
+                                <div className="h-4 w-px bg-border"></div>
+                            </>
+                        )}
                         <Link to="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                             Dashboard
                         </Link>
@@ -39,6 +52,30 @@ export default function Layout() {
 
                     <div className="flex items-center gap-4">
                         <ThemeToggle />
+                        {isAuthenticated ? (
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                    <div className="bg-primary/10 text-primary p-1.5 rounded-full">
+                                        <User className="h-4 w-4" />
+                                    </div>
+                                    <span>{user?.companyName || user?.name || user?.email}</span>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                    Logout
+                                </button>
+                            </div>
+                        ) : (
+                            <Link
+                                to="/login"
+                                className="text-sm font-medium px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                            >
+                                Login
+                            </Link>
+                        )}
                     </div>
                 </div>
             </header>
