@@ -496,7 +496,7 @@ export default function Dashboard() {
                                 <div className="flex items-center gap-2">
                                     <Sparkles className="h-5 w-5 text-primary" />
                                     <div>
-                                        <h2 className="font-semibold text-base leading-tight">Gemini AI Matches</h2>
+                                        <h2 className="font-semibold text-base leading-tight">AI Matches</h2>
                                         <p className="text-xs text-muted-foreground">Marketplace results for {aiMatchesModal.material}</p>
                                     </div>
                                 </div>
@@ -509,7 +509,7 @@ export default function Dashboard() {
                                 {aiMatchesLoading ? (
                                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-4">
                                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                                        <p className="text-sm">Gemini is analyzing marketplace patterns...</p>
+                                        <p className="text-sm">AI is analyzing marketplace patterns...</p>
                                     </div>
                                 ) : aiMatchesData.length === 0 ? (
                                     <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg border-muted">
