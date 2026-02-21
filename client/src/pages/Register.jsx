@@ -206,7 +206,7 @@ export default function Register() {
                         <h2 className="text-3xl font-bold">Registration Successful!</h2>
                         <p className="text-muted-foreground max-w-sm mx-auto">Your factory account has been created. Welcome to the Circular Economy Marketplace!</p>
                         <div className="pt-6">
-                            <Button onClick={() => navigate("/producer")}>Go to Factory Dashboard</Button>
+                            <Button onClick={() => navigate("/dashboard")}>Go to Factory Dashboard</Button>
                         </div>
                     </motion.div>
                 )}

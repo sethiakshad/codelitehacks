@@ -36,7 +36,7 @@ export default function ImpactCalculator() {
             co2Saved: co2Saved.toFixed(1),
             landfillDiverted: q.toFixed(1),
         }
-    }, [material, quantity, distance])
+    }, [material, quantity, distance, factors])
 
     return (
         <div className="max-w-5xl mx-auto py-8 space-y-8">
