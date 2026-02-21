@@ -100,16 +100,24 @@ export default function Dashboard() {
             fetchDealsRef.current?.()
         })
 
-        newSocket.on("receive_message", (message) => {
-            const currentChatId = activeChatRef.current?._id?.toString()
-            const messageChatId = message.deal_id?.toString ? message.deal_id.toString() : String(message.deal_id)
-            if (currentChatId && currentChatId === messageChatId) {
-                setMessages(prev => {
-                    // Avoid duplicates
-                    if (prev.some(m => m._id === message._id)) return prev
-                    return [...prev, message]
-                })
-            }
+        // Chat messages delivered via deal-specific rooms — no user ID matching needed
+        newSocket.on("chat_message", (message) => {
+            setMessages(prev => {
+                // Avoid appending duplicates (optimistic msg vs server msg)
+                if (prev.some(m => m._id && m._id === message._id)) return prev
+                // Replace matching optimistic message (same text, sender)
+                const optimisticIdx = prev.findIndex(m =>
+                    m._id?.startsWith("opt-") &&
+                    m.sender_id === message.sender_id &&
+                    m.text === message.text
+                )
+                if (optimisticIdx !== -1) {
+                    const next = [...prev]
+                    next[optimisticIdx] = message
+                    return next
+                }
+                return [...prev, message]
+            })
         })
 
         return () => newSocket.disconnect()
@@ -248,9 +256,16 @@ export default function Dashboard() {
     const handleOpenChat = (deal) => {
         setActiveChat(deal)
         fetchChatHistory(deal._id)
+        // Join the deal-specific socket room so messages are pushed directly
+        if (socket) {
+            socket.emit("join_chat", deal._id)
+        }
     }
 
     const handleCloseChat = () => {
+        if (socket && activeChat) {
+            socket.emit("leave_chat", activeChat._id)
+        }
         setActiveChat(null)
         setMessages([])
     }
@@ -261,37 +276,21 @@ export default function Dashboard() {
 
         const dealId = activeChat._id
         const senderId = user.id || user._id
-        const isSeller = activeChat.seller_id && (
-            activeChat.seller_id._id === senderId || activeChat.seller_id === senderId
-        )
-
-        const receiverId = isSeller
-            ? activeChat.buyer_id?._id || activeChat.buyer_id
-            : activeChat.seller_id?._id || activeChat.seller_id;
-
-        if (!receiverId) {
-            alert("Cannot send message: The other party's profile is incomplete or missing in this older deal.");
-            return;
-        }
+        const text = newMessage
 
         // Optimistic update — add message immediately to UI
         const optimisticMsg = {
             _id: `opt-${Date.now()}`,
             deal_id: dealId,
             sender_id: senderId,
-            receiver_id: receiverId,
-            text: newMessage,
+            text,
             createdAt: new Date().toISOString()
         }
         setMessages(prev => [...prev, optimisticMsg])
         setNewMessage("")
 
-        socket.emit("send_message", {
-            deal_id: dealId,
-            sender_id: senderId,
-            receiver_id: receiverId,
-            text: optimisticMsg.text
-        })
+        // Server will save and broadcast to the deal room
+        socket.emit("send_message", { deal_id: dealId, sender_id: senderId, text })
     }
 
     const handleSaveRequirement = async (e) => {

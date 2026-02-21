@@ -37,25 +37,33 @@ io.on("connection", (socket) => {
     // Client can emit "identify" passing their user ID to join a private room
     socket.on("identify", (userId) => {
         if (!userId) return;
-        const roomName = userId.toString();
-        socket.join(roomName);
-        console.log(`User ${roomName} joined their personal room.`);
+        socket.join(userId.toString());
+        console.log(`User ${userId} joined their personal room.`);
     });
 
-    // Chat Message Event
+    // Join deal-specific chat room
+    socket.on("join_chat", (dealId) => {
+        if (!dealId) return;
+        socket.join(`deal:${dealId}`);
+        console.log(`Socket ${socket.id} joined deal room: deal:${dealId}`);
+    });
+
+    // Leave deal-specific chat room
+    socket.on("leave_chat", (dealId) => {
+        if (!dealId) return;
+        socket.leave(`deal:${dealId}`);
+    });
+
+    // Chat Message Event — broadcast to the deal room so ALL participants receive it
     socket.on("send_message", async (data) => {
-        const { deal_id, sender_id, receiver_id, text } = data;
-        if (!deal_id || !sender_id || !receiver_id || !text) return;
+        const { deal_id, sender_id, text } = data;
+        if (!deal_id || !sender_id || !text) return;
 
         try {
-            // Save to DB
-            const newMessage = await Message.create({ deal_id, sender_id, receiver_id, text });
+            const newMessage = await Message.create({ deal_id, sender_id, receiver_id: sender_id, text });
 
-            // Deliver to the receiver in real-time — use string room name
-            io.to(receiver_id.toString()).emit("receive_message", newMessage);
-
-            // Send back acknowledgment to the sender
-            socket.emit("message_sent", newMessage);
+            // Broadcast to the deal room — both users must join via join_chat
+            io.to(`deal:${deal_id}`).emit("chat_message", newMessage);
         } catch (err) {
             console.error("Socket send_message error:", err);
         }
