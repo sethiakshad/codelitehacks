@@ -106,13 +106,15 @@ export default function (io) {
             deal.status = status;
             await deal.save();
 
-            // Notify the buyer
-            if (status === "Completed") {
-                io.to(deal.buyer_id.toString()).emit("deal_updated", {
-                    message: "Your deal has been approved by the seller!",
-                    deal
-                });
-            }
+            // Notify both buyer and seller of the status change
+            const updatedDeal = await deal.populate([
+                { path: "buyer_id", select: "name" },
+                { path: "seller_id", select: "name" },
+                { path: "listing_id" }
+            ])
+            const dealPayload = { message: `Deal status updated to ${status}!`, deal: updatedDeal }
+            io.to(deal.buyer_id.toString()).emit("deal_updated", dealPayload)
+            io.to(deal.seller_id.toString()).emit("deal_updated", dealPayload)
 
             res.status(200).json(deal);
         } catch (err) {

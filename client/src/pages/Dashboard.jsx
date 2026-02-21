@@ -45,6 +45,7 @@ export default function Dashboard() {
 
     // Socket.IO state
     const [socket, setSocket] = useState(null)
+    const fetchDealsRef = useRef(null)
 
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false)
@@ -85,31 +86,29 @@ export default function Dashboard() {
         }
 
         newSocket.on("new_deal", (data) => {
-            // New deal notification received!
-            alert(`Real-Time Update: ${data.message}`)
-            fetchDeals() // Refresh deals to compute new offsets
+            // Use ref to avoid stale closure
+            fetchDealsRef.current?.()
         })
 
         newSocket.on("deal_updated", (data) => {
-            alert(`Deal Update: ${data.message}`)
-            fetchDeals()
+            // Optimistically update the deal status in state, then refetch
+            if (data.deal) {
+                setDeals(prev => prev.map(d =>
+                    d._id === data.deal._id ? { ...d, status: data.deal.status } : d
+                ))
+            }
+            fetchDealsRef.current?.()
         })
 
         newSocket.on("receive_message", (message) => {
-            const currentChatId = activeChatRef.current?._id?.toString() || activeChatRef.current?.toString();
-            const messageChatId = message.deal_id?._id?.toString() || message.deal_id?.toString();
-
+            const currentChatId = activeChatRef.current?._id?.toString()
+            const messageChatId = message.deal_id?.toString ? message.deal_id.toString() : String(message.deal_id)
             if (currentChatId && currentChatId === messageChatId) {
-                setMessages((prev) => [...(prev || []), message])
-            }
-        })
-
-        newSocket.on("message_sent", (message) => {
-            const currentChatId = activeChatRef.current?._id?.toString() || activeChatRef.current?.toString();
-            const messageChatId = message.deal_id?._id?.toString() || message.deal_id?.toString();
-
-            if (currentChatId && currentChatId === messageChatId) {
-                setMessages((prev) => [...(prev || []), message])
+                setMessages(prev => {
+                    // Avoid duplicates
+                    if (prev.some(m => m._id === message._id)) return prev
+                    return [...prev, message]
+                })
             }
         })
 
@@ -167,14 +166,17 @@ export default function Dashboard() {
         }
     }
 
-    const handleInitiateDeal = async (listingId, quantityStr) => {
-        // Simple extraction of number from qty string like "12 tons/mo"
-        const numQty = parseFloat(quantityStr) || 1;
+    // Keep ref always pointing to latest fetchDeals to avoid stale closures in socket handlers
+    useEffect(() => {
+        fetchDealsRef.current = fetchDeals
+    })
 
+    const handleInitiateDeal = async (listingId, quantityStr) => {
+        const numQty = parseFloat(quantityStr) || 1;
         try {
             await api.post("/api/deals", { listing_id: listingId, quantity: numQty })
             alert("Deal initiated! The seller has been notified in real-time.")
-            fetchDeals() // refresh my deals view
+            fetchDealsRef.current?.()
         } catch (err) {
             console.error(err)
             alert("Failed to initiate deal.")
@@ -182,12 +184,17 @@ export default function Dashboard() {
     }
 
     const handleApproveDeal = async (dealId) => {
+        // Optimistic update — change status immediately in UI
+        setDeals(prev => prev.map(d =>
+            d._id === dealId ? { ...d, status: "Completed" } : d
+        ))
         try {
             await api.put(`/api/deals/${dealId}/status`, { status: "Completed" })
-            fetchDeals()
+            fetchDealsRef.current?.()
         } catch (err) {
             console.error(err)
             alert("Failed to approve deal.")
+            fetchDealsRef.current?.()
         }
     }
 
@@ -195,7 +202,6 @@ export default function Dashboard() {
         setAiMatchesModal({ open: true, reqId: req._id, material: req.material })
         setAiMatchesLoading(true)
         setAiMatchesData([])
-
         try {
             const res = await api.get(`/api/requirements/${req._id}/matches`)
             setAiMatchesData(Array.isArray(res) ? res : [])
@@ -254,7 +260,10 @@ export default function Dashboard() {
         if (!newMessage.trim() || !socket || !activeChat || !user) return
 
         const dealId = activeChat._id
-        const isSeller = activeChat.seller_id && (activeChat.seller_id._id === user.id || activeChat.seller_id._id === user._id)
+        const senderId = user.id || user._id
+        const isSeller = activeChat.seller_id && (
+            activeChat.seller_id._id === senderId || activeChat.seller_id === senderId
+        )
 
         const receiverId = isSeller
             ? activeChat.buyer_id?._id || activeChat.buyer_id
@@ -265,15 +274,24 @@ export default function Dashboard() {
             return;
         }
 
-        const msgData = {
+        // Optimistic update — add message immediately to UI
+        const optimisticMsg = {
+            _id: `opt-${Date.now()}`,
             deal_id: dealId,
-            sender_id: user.id || user._id,
+            sender_id: senderId,
             receiver_id: receiverId,
-            text: newMessage
+            text: newMessage,
+            createdAt: new Date().toISOString()
         }
-
-        socket.emit("send_message", msgData)
+        setMessages(prev => [...prev, optimisticMsg])
         setNewMessage("")
+
+        socket.emit("send_message", {
+            deal_id: dealId,
+            sender_id: senderId,
+            receiver_id: receiverId,
+            text: optimisticMsg.text
+        })
     }
 
     const handleSaveRequirement = async (e) => {
