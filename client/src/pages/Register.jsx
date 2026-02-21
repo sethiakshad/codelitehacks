@@ -184,7 +184,7 @@ export default function Register() {
                             Your factory account is pending verification. Once approved, you can start trading on the marketplace.
                         </p>
                         <div className="pt-6">
-                            <Button onClick={() => navigate("/producer")}>Go to Factory Dashboard</Button>
+                            <Button onClick={() => navigate("/dashboard")}>Go to Factory Dashboard</Button>
                         </div>
                     </motion.div>
                 )}

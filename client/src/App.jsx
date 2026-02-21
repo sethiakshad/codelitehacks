@@ -2,9 +2,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "./components/theme-provider"
 import Layout from "./components/Layout"
 import Landing from "./pages/Landing"
-import ProducerDashboard from "./pages/ProducerDashboard"
+import Dashboard from "./pages/Dashboard"
 import CreateListing from "./pages/CreateListing"
-import BuyerDashboard from "./pages/BuyerDashboard"
 import Register from "./pages/Register"
 import ImpactCalculator from "./pages/ImpactCalculator"
 import Logistics from "./pages/Logistics"
@@ -19,9 +18,8 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Landing />} />
             <Route path="register" element={<Register />} />
-            <Route path="producer" element={<ProducerDashboard />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="list-waste" element={<CreateListing />} />
-            <Route path="buyer" element={<BuyerDashboard />} />
             <Route path="impact" element={<ImpactCalculator />} />
             <Route path="logistics" element={<Logistics />} />
             <Route path="docs" element={<ComplianceDocs />} />

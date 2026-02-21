@@ -28,7 +28,7 @@ export default function Login() {
                 setError(data.message || "Login failed.")
             } else {
                 localStorage.setItem("token", data.token)
-                navigate("/producer")
+                navigate("/dashboard")
             }
         } catch {
             setError("Network error. Please try again.")

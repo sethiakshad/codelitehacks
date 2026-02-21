@@ -19,11 +19,8 @@ export default function Layout() {
                             Register
                         </Link>
                         <div className="h-4 w-px bg-border"></div>
-                        <Link to="/producer" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                            Producer
-                        </Link>
-                        <Link to="/buyer" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-                            Buyer
+                        <Link to="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                            Dashboard
                         </Link>
                         <div className="h-4 w-px bg-border"></div>
                         <Link to="/impact" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
