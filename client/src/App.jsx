@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext"
 import Layout from "./components/Layout"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Landing from "./pages/Landing"
+import Dashboard from "./pages/Dashboard"
 import ProducerDashboard from "./pages/ProducerDashboard"
 import CreateListing from "./pages/CreateListing"
 import BuyerDashboard from "./pages/BuyerDashboard"
@@ -24,6 +25,7 @@ function App() {
               <Route path="register" element={<Register />} />
               <Route path="login" element={<Login />} />
               {/* Protected Routes */}
+              <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="producer" element={<ProtectedRoute><ProducerDashboard /></ProtectedRoute>} />
               <Route path="list-waste" element={<ProtectedRoute><CreateListing /></ProtectedRoute>} />
               <Route path="buyer" element={<ProtectedRoute><BuyerDashboard /></ProtectedRoute>} />
