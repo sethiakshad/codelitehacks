@@ -33,6 +33,9 @@ export default function Layout() {
                                 <Link to="/list-waste" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                                     New Listing
                                 </Link>
+                                <Link to="/forecast" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                                    Forecast
+                                </Link>
                                 <Link to="/docs" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
                                     Docs
                                 </Link>
