@@ -38,6 +38,7 @@ export default function Dashboard() {
     const [loadingReqs, setLoadingReqs] = useState(true)
 
     // Deals & Marketplace state
+    const [myListings, setMyListings] = useState([])
     const [marketplaceListings, setMarketplaceListings] = useState([])
     const [deals, setDeals] = useState([])
     const [totalCO2, setTotalCO2] = useState(0)
@@ -71,9 +72,10 @@ export default function Dashboard() {
 
     useEffect(() => {
         fetchRequirements()
+        fetchMyListings()
         fetchMarketplace()
         fetchDeals()
-    }, [])
+    }, [user])
 
     const fetchRequirements = async () => {
         try {
@@ -83,6 +85,16 @@ export default function Dashboard() {
             console.error("Failed to fetch requirements:", err)
         } finally {
             setLoadingReqs(false)
+        }
+    }
+
+    const fetchMyListings = async () => {
+        if (!user) return
+        try {
+            const res = await api.get(`/api/waste-profiles?factory_id=${user.id || user._id}`)
+            setMyListings(res.data)
+        } catch (err) {
+            console.error("Failed to fetch my listings:", err)
         }
     }
 
@@ -183,7 +195,7 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {[
-                    { title: "Active Listings", value: "12", icon: Package, trend: "Static mock" },
+                    { title: "Active Listings", value: myListings.length.toString(), icon: Package, trend: "Created by you" },
                     { title: "Open Deals", value: deals.length.toString(), icon: TrendingUp, trend: "Real-time updates" },
                     { title: "CO2 Offset", value: `${totalCO2.toFixed(1)} t`, icon: BarChart3, trend: "Calculated from deals" },
                     { title: "Missing Docs", value: "1", icon: AlertCircle, trend: "Requires attention", urgent: true },
@@ -337,30 +349,35 @@ export default function Dashboard() {
                         <CardDescription>Your recently added industrial byproducts.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            {[
-                                { material: "Steel Offcuts", qty: "5 tons/mo", match: "98%", status: "Matched" },
-                                { material: "Chemical Sludge", qty: "200 L/mo", match: "Pending", status: "Active" },
-                                { material: "Plastic Packaging", qty: "1 ton/mo", match: "85%", status: "Negotiating" },
-                            ].map((listing, i) => (
-                                <motion.div
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: 0.1 * i }}
-                                    key={i}
-                                    className="flex items-center justify-between p-4 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                                >
-                                    <div>
-                                        <p className="font-semibold">{listing.material}</p>
-                                        <p className="text-sm text-muted-foreground">{listing.qty}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-sm font-medium text-primary">{listing.status}</p>
-                                        <p className="text-xs text-muted-foreground">Match: {listing.match}</p>
-                                    </div>
-                                </motion.div>
-                            ))}
-                        </div>
+                        {myListings.length === 0 ? (
+                            <div className="text-center py-8 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
+                                <p className="mb-3">You haven't added any waste listings to sell.</p>
+                                <Link to="/list-waste">
+                                    <Button size="sm" variant="outline">Create a Listing</Button>
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {myListings.map((listing, i) => (
+                                    <motion.div
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: 0.1 * i }}
+                                        key={listing._id}
+                                        className="flex items-center justify-between p-4 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
+                                    >
+                                        <div>
+                                            <p className="font-semibold">{listing.waste_type}</p>
+                                            <p className="text-sm text-muted-foreground">{listing.average_quantity_per_month} {listing.unit}</p>
+                                        </div>
+                                        <div className="text-right flex flex-col items-end">
+                                            <p className="text-sm font-medium text-primary">Active</p>
+                                            <p className="text-xs text-muted-foreground">{listing.createdAt?.substring(0, 10)}</p>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
