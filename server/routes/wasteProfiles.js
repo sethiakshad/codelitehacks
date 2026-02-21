@@ -1,5 +1,5 @@
 import { Router } from "express";
-import pool from "../config/database.js";
+import FactoryWasteProfile from "../models/factoryWasteProfiles.model.js";
 import auth from "../middleware/auth.js";
 
 const router = Router();
@@ -8,14 +8,9 @@ const router = Router();
 router.get("/", auth, async (req, res) => {
     try {
         const { factory_id } = req.query;
-        let query = "SELECT * FROM factory_waste_profiles ORDER BY created_at DESC";
-        const params = [];
-        if (factory_id) {
-            query = "SELECT * FROM factory_waste_profiles WHERE factory_id = $1 ORDER BY created_at DESC";
-            params.push(factory_id);
-        }
-        const result = await pool.query(query, params);
-        res.status(200).json({ data: result.rows });
+        const query = factory_id ? { factory_id } : {};
+        const profiles = await FactoryWasteProfile.find(query).sort({ createdAt: -1 });
+        res.status(200).json({ data: profiles });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -25,9 +20,9 @@ router.get("/", auth, async (req, res) => {
 // GET /api/waste-profiles/:id
 router.get("/:id", auth, async (req, res) => {
     try {
-        const result = await pool.query("SELECT * FROM factory_waste_profiles WHERE id = $1", [req.params.id]);
-        if (result.rows.length === 0) return res.status(404).json({ message: "Waste profile not found." });
-        res.status(200).json({ data: result.rows[0] });
+        const profile = await FactoryWasteProfile.findById(req.params.id);
+        if (!profile) return res.status(404).json({ message: "Waste profile not found." });
+        res.status(200).json({ data: profile });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -41,12 +36,14 @@ router.post("/", auth, async (req, res) => {
         return res.status(400).json({ message: "factory_id and waste_type are required." });
     }
     try {
-        const result = await pool.query(
-            `INSERT INTO factory_waste_profiles (factory_id, waste_type, average_quantity_per_month, hazardous, storage_condition)
-             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [factory_id, waste_type, average_quantity_per_month, hazardous || false, storage_condition]
-        );
-        res.status(201).json({ data: result.rows[0], message: "Waste profile created." });
+        const profile = await FactoryWasteProfile.create({
+            factory_id,
+            waste_type,
+            average_quantity_per_month,
+            hazardous: hazardous || false,
+            storage_condition
+        });
+        res.status(201).json({ data: profile, message: "Waste profile created." });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -58,14 +55,14 @@ router.put("/:id", auth, async (req, res) => {
     const fields = req.body;
     const keys = Object.keys(fields);
     if (keys.length === 0) return res.status(400).json({ message: "No fields to update." });
-    const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(", ");
-    const values = [...Object.values(fields), req.params.id];
     try {
-        const result = await pool.query(
-            `UPDATE factory_waste_profiles SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`, values
+        const profile = await FactoryWasteProfile.findByIdAndUpdate(
+            req.params.id,
+            { $set: fields },
+            { new: true, runValidators: true }
         );
-        if (result.rows.length === 0) return res.status(404).json({ message: "Waste profile not found." });
-        res.status(200).json({ data: result.rows[0], message: "Waste profile updated." });
+        if (!profile) return res.status(404).json({ message: "Waste profile not found." });
+        res.status(200).json({ data: profile, message: "Waste profile updated." });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -75,8 +72,8 @@ router.put("/:id", auth, async (req, res) => {
 // DELETE /api/waste-profiles/:id
 router.delete("/:id", auth, async (req, res) => {
     try {
-        const result = await pool.query("DELETE FROM factory_waste_profiles WHERE id = $1 RETURNING id", [req.params.id]);
-        if (result.rows.length === 0) return res.status(404).json({ message: "Waste profile not found." });
+        const profile = await FactoryWasteProfile.findByIdAndDelete(req.params.id);
+        if (!profile) return res.status(404).json({ message: "Waste profile not found." });
         res.status(200).json({ message: "Waste profile deleted." });
     } catch (err) {
         console.error(err);

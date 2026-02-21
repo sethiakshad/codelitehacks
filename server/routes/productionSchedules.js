@@ -1,5 +1,5 @@
 import { Router } from "express";
-import pool from "../config/database.js";
+import ProductionSchedule from "../models/productionSchedules.model.js";
 import auth from "../middleware/auth.js";
 
 const router = Router();
@@ -8,14 +8,12 @@ const router = Router();
 router.get("/", auth, async (req, res) => {
     try {
         const { factory_id } = req.query;
-        let query = "SELECT * FROM production_schedules ORDER BY production_month DESC";
-        const params = [];
+        let query = {};
         if (factory_id) {
-            query = "SELECT * FROM production_schedules WHERE factory_id = $1 ORDER BY production_month DESC";
-            params.push(factory_id);
+            query.factory_id = factory_id;
         }
-        const result = await pool.query(query, params);
-        res.status(200).json({ data: result.rows });
+        const schedules = await ProductionSchedule.find(query).sort({ production_month: -1 });
+        res.status(200).json({ data: schedules });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -25,9 +23,9 @@ router.get("/", auth, async (req, res) => {
 // GET /api/production-schedules/:id
 router.get("/:id", auth, async (req, res) => {
     try {
-        const result = await pool.query("SELECT * FROM production_schedules WHERE id = $1", [req.params.id]);
-        if (result.rows.length === 0) return res.status(404).json({ message: "Schedule not found." });
-        res.status(200).json({ data: result.rows[0] });
+        const schedule = await ProductionSchedule.findById(req.params.id);
+        if (!schedule) return res.status(404).json({ message: "Schedule not found." });
+        res.status(200).json({ data: schedule });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -41,12 +39,10 @@ router.post("/", auth, async (req, res) => {
         return res.status(400).json({ message: "factory_id and production_month are required." });
     }
     try {
-        const result = await pool.query(
-            `INSERT INTO production_schedules (factory_id, product_type, production_volume, production_month)
-             VALUES ($1, $2, $3, $4) RETURNING *`,
-            [factory_id, product_type, production_volume, production_month]
-        );
-        res.status(201).json({ data: result.rows[0], message: "Production schedule created." });
+        const schedule = await ProductionSchedule.create({
+            factory_id, product_type, production_volume, production_month
+        });
+        res.status(201).json({ data: schedule, message: "Production schedule created." });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -58,14 +54,16 @@ router.put("/:id", auth, async (req, res) => {
     const fields = req.body;
     const keys = Object.keys(fields);
     if (keys.length === 0) return res.status(400).json({ message: "No fields to update." });
-    const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(", ");
-    const values = [...Object.values(fields), req.params.id];
+
     try {
-        const result = await pool.query(
-            `UPDATE production_schedules SET ${setClause} WHERE id = $${keys.length + 1} RETURNING *`, values
+        const schedule = await ProductionSchedule.findByIdAndUpdate(
+            req.params.id,
+            { $set: fields },
+            { new: true, runValidators: true }
+
         );
-        if (result.rows.length === 0) return res.status(404).json({ message: "Schedule not found." });
-        res.status(200).json({ data: result.rows[0], message: "Schedule updated." });
+        if (!schedule) return res.status(404).json({ message: "Schedule not found." });
+        res.status(200).json({ data: schedule, message: "Schedule updated." });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -75,8 +73,8 @@ router.put("/:id", auth, async (req, res) => {
 // DELETE /api/production-schedules/:id
 router.delete("/:id", auth, async (req, res) => {
     try {
-        const result = await pool.query("DELETE FROM production_schedules WHERE id = $1 RETURNING id", [req.params.id]);
-        if (result.rows.length === 0) return res.status(404).json({ message: "Schedule not found." });
+        const schedule = await ProductionSchedule.findByIdAndDelete(req.params.id);
+        if (!schedule) return res.status(404).json({ message: "Schedule not found." });
         res.status(200).json({ message: "Production schedule deleted." });
     } catch (err) {
         console.error(err);

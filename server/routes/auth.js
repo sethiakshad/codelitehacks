@@ -1,7 +1,8 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import pool from "../config/database.js";
+import User from "../models/users.model.js";
+import authMiddleware from "../middleware/auth.js";
 
 const router = Router();
 
@@ -15,8 +16,8 @@ router.post("/register", async (req, res) => {
 
     try {
         // Check if user already exists
-        const existing = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
-        if (existing.rows.length > 0) {
+        const existing = await User.findOne({ email });
+        if (existing) {
             return res.status(409).json({ message: "Email already registered." });
         }
 
@@ -24,22 +25,21 @@ router.post("/register", async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Insert user
-        const result = await pool.query(
-            `INSERT INTO users (name, email, password, role)
-             VALUES ($1, $2, $3, $4) RETURNING id, name, email, role, created_at`,
-            [name, email, hashedPassword, role || "factory_manager"]
-        );
-
-        const user = result.rows[0];
+        const user = await User.create({
+            name,
+            email,
+            password: hashedPassword,
+            role: role || "factory_manager"
+        });
 
         // Sign token
         const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role },
+            { id: user._id, email: user.email, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: "7d" }
         );
 
-        res.status(201).json({ token, user });
+        res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
     } catch (err) {
         console.error("Register error:", err);
         res.status(500).json({ message: "Server error during registration." });
@@ -55,13 +55,12 @@ router.post("/login", async (req, res) => {
     }
 
     try {
-        const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
+        const user = await User.findOne({ email });
 
-        if (result.rows.length === 0) {
+        if (!user) {
             return res.status(401).json({ message: "Invalid email or password." });
         }
 
-        const user = result.rows[0];
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
@@ -69,13 +68,12 @@ router.post("/login", async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: user.id, email: user.email, role: user.role },
+            { id: user._id, email: user.email, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: "7d" }
         );
 
-        const { password: _, ...userWithoutPassword } = user;
-        res.status(200).json({ token, user: userWithoutPassword });
+        res.status(200).json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
     } catch (err) {
         console.error("Login error:", err);
         res.status(500).json({ message: "Server error during login." });
@@ -83,16 +81,17 @@ router.post("/login", async (req, res) => {
 });
 
 // ─── GET /api/auth/me ─────────────────────────────────────────────────────────
-import authMiddleware from "../middleware/auth.js";
 
 router.get("/me", authMiddleware, async (req, res) => {
     try {
-        const result = await pool.query(
-            "SELECT id, name, email, role, factory_id, created_at FROM users WHERE id = $1",
-            [req.user.id]
-        );
-        if (result.rows.length === 0) return res.status(404).json({ message: "User not found." });
-        res.status(200).json({ user: result.rows[0] });
+        const user = await User.findById(req.user.id).select("-password");
+        if (!user) return res.status(404).json({ message: "User not found." });
+
+        // Return id along with _id for compatibility
+        const userData = user.toObject();
+        userData.id = userData._id;
+
+        res.status(200).json({ user: userData });
     } catch (err) {
         console.error("Me error:", err);
         res.status(500).json({ message: "Server error." });

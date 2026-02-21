@@ -4,6 +4,11 @@ import cors from "cors";
 
 dotenv.config();
 
+import connectDB from "./config/database.js";
+
+// Connect to MongoDB
+connectDB();
+
 // Routes
 import authRoutes from "./routes/auth.js";
 import factoryRoutes from "./routes/factories.js";
