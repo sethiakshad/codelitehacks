@@ -17,7 +17,7 @@ export default function ProducerDashboard() {
     useEffect(() => {
         if (!user?.id) return;
         api.get(`/api/waste-profiles?factory_id=${user.id}`)
-            .then(data => setWasteProfiles(data.data || []))
+            .then(data => setWasteProfiles(data || []))
             .catch(err => setError("Failed to load waste profiles."))
             .finally(() => setLoading(false))
     }, [user])

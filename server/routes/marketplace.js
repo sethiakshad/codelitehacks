@@ -43,7 +43,7 @@ router.get("/", async (req, res) => {
             return item;
         });
 
-        res.status(200).json({ data: enrichedListings });
+        res.status(200).json(enrichedListings);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error fetching marketplace." });

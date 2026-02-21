@@ -13,7 +13,7 @@ router.get("/", auth, async (req, res) => {
         if (user_id) query.user_id = user_id;
 
         const profiles = await FactoryWasteProfile.find(query).sort({ createdAt: -1 }).populate("user_id", "name email");
-        res.status(200).json({ data: profiles });
+        res.status(200).json(profiles);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -25,7 +25,7 @@ router.get("/:id", auth, async (req, res) => {
     try {
         const profile = await FactoryWasteProfile.findById(req.params.id);
         if (!profile) return res.status(404).json({ message: "Waste profile not found." });
-        res.status(200).json({ data: profile });
+        res.status(200).json(profile);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -47,7 +47,7 @@ router.post("/", auth, async (req, res) => {
             hazardous: hazardous || false,
             storage_condition
         });
-        res.status(201).json({ data: profile, message: "Waste profile created." });
+        res.status(201).json(profile);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });
@@ -66,7 +66,7 @@ router.put("/:id", auth, async (req, res) => {
             { new: true, runValidators: true }
         );
         if (!profile) return res.status(404).json({ message: "Waste profile not found." });
-        res.status(200).json({ data: profile, message: "Waste profile updated." });
+        res.status(200).json(profile);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error." });

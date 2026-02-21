@@ -19,7 +19,7 @@ router.get("/:dealId", auth, async (req, res) => {
         }
 
         const messages = await Message.find({ deal_id: dealId }).sort({ createdAt: 1 });
-        res.status(200).json({ data: messages });
+        res.status(200).json(messages);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error fetching messages." });

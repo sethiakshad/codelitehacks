@@ -120,7 +120,7 @@ export default function Dashboard() {
     const fetchRequirements = async () => {
         try {
             const res = await api.get("/api/requirements")
-            setRequirements(res.data)
+            setRequirements(Array.isArray(res) ? res : [])
         } catch (err) {
             console.error("Failed to fetch requirements:", err)
         } finally {
@@ -132,7 +132,7 @@ export default function Dashboard() {
         if (!user) return
         try {
             const res = await api.get(`/api/waste-profiles?user_id=${user.id || user._id}`)
-            setMyListings(res.data)
+            setMyListings(Array.isArray(res) ? res : [])
         } catch (err) {
             console.error("Failed to fetch my listings:", err)
         }
@@ -141,7 +141,7 @@ export default function Dashboard() {
     const fetchMarketplace = async () => {
         try {
             const res = await api.get("/api/marketplace")
-            setMarketplaceListings(res.data)
+            setMarketplaceListings(Array.isArray(res) ? res : [])
         } catch (err) {
             console.error("Failed to fetch marketplace listings:", err)
         }
@@ -149,12 +149,12 @@ export default function Dashboard() {
 
     const fetchDeals = async () => {
         try {
-            const res = await api.get("/api/deals")
-            const openDeals = res.data
-            setDeals(openDeals)
+            const openDeals = await api.get("/api/deals")
+            const dealsArr = Array.isArray(openDeals) ? openDeals : []
+            setDeals(dealsArr)
 
             // Calculate Total CO2 from deals
-            const co2Sum = openDeals.reduce((acc, deal) => acc + (deal.co2_saved || 0), 0)
+            const co2Sum = dealsArr.reduce((acc, deal) => acc + (deal.co2_saved || 0), 0)
             setTotalCO2(co2Sum)
         } catch (err) {
             console.error("Failed to fetch deals:", err)
@@ -185,6 +185,27 @@ export default function Dashboard() {
         }
     }
 
+    const handleOpenAiMatches = async (req) => {
+        setAiMatchesModal({ open: true, reqId: req._id, material: req.material })
+        setAiMatchesLoading(true)
+        setAiMatchesData([])
+
+        try {
+            const res = await api.get(`/api/requirements/${req._id}/matches`)
+            setAiMatchesData(Array.isArray(res) ? res : [])
+        } catch (err) {
+            console.error("Failed to fetch AI matches:", err)
+            alert("AI matching is currently unavailable. Please try again later.")
+        } finally {
+            setAiMatchesLoading(false)
+        }
+    }
+
+    const closeAiMatches = () => {
+        setAiMatchesModal({ open: false, reqId: null, material: null })
+        setAiMatchesData([])
+    }
+
     const handleOpenModal = (req = null) => {
         if (req) {
             setEditId(req._id)
@@ -205,7 +226,7 @@ export default function Dashboard() {
     const fetchChatHistory = async (dealId) => {
         try {
             const res = await api.get(`/api/messages/${dealId}`)
-            setMessages(res.data || [])
+            setMessages(res || [])
         } catch (err) {
             console.error("Failed to fetch chat:", err)
             setMessages([])
@@ -337,7 +358,7 @@ export default function Dashboard() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {requirements.map((req, i) => (
+                            {Array.isArray(requirements) && requirements.map((req, i) => (
                                 <motion.div
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
@@ -497,7 +518,7 @@ export default function Dashboard() {
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        {aiMatchesData.map((match, i) => (
+                                        {Array.isArray(aiMatchesData) && aiMatchesData.map((match, i) => (
                                             <motion.div
                                                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * i }}
                                                 key={match._id}
@@ -567,7 +588,7 @@ export default function Dashboard() {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {myListings.map((listing, i) => (
+                                {Array.isArray(myListings) && myListings.map((listing, i) => (
                                     <motion.div
                                         initial={{ opacity: 0, x: -20 }}
                                         animate={{ opacity: 1, x: 0 }}
@@ -600,7 +621,7 @@ export default function Dashboard() {
                             <div className="text-center py-8 text-sm text-muted-foreground">No marketplace listings available.</div>
                         ) : (
                             <div className="space-y-4">
-                                {marketplaceListings.map((item, i) => (
+                                {Array.isArray(marketplaceListings) && marketplaceListings.map((item, i) => (
                                     <motion.div
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
@@ -637,7 +658,7 @@ export default function Dashboard() {
                             <div className="text-center py-8 text-sm text-muted-foreground">No active deals.</div>
                         ) : (
                             <div className="space-y-4">
-                                {deals.map((deal, i) => {
+                                {Array.isArray(deals) && deals.map((deal, i) => {
                                     const isSeller = user && deal.seller_id && (deal.seller_id._id === user.id || deal.seller_id._id === user._id)
                                     const isPending = deal.status === "Pending"
 
@@ -738,7 +759,7 @@ export default function Dashboard() {
                             {/* Messages Container */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col min-h-0 bg-background/50">
                                 {messages.map((msg) => {
-                                    const isMe = msg.sender_id === (user.id || user._id)
+                                    const isMe = user && (msg.sender_id === (user.id || user._id))
                                     return (
                                         <div key={msg._id} className={`flex flex-col max-w-[80%] ${isMe ? "self-end items-end" : "self-start items-start"}`}>
                                             <div className={`px-4 py-2.5 rounded-2xl text-sm ${isMe ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm border"}`}>

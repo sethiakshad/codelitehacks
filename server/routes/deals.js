@@ -83,7 +83,7 @@ export default function (io) {
                 .populate("listing_id")
                 .sort({ createdAt: -1 });
 
-            res.status(200).json({ data: deals });
+            res.status(200).json(deals);
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: "Server error fetching deals." });
@@ -114,7 +114,7 @@ export default function (io) {
                 });
             }
 
-            res.status(200).json({ data: deal, message: `Deal marked as ${status}.` });
+            res.status(200).json(deal);
         } catch (err) {
             console.error(err);
             res.status(500).json({ message: "Server error updating deal." });
