@@ -1,11 +1,8 @@
 [phases.setup]
-nixPkgs = ["...", "nodejs"]
+nixPkgs = ["nodejs"]
 
 [phases.install]
 cmds = ["npm install"]
-
-[phases.build]
-cmds = ["npm run build --workspace=server || true"]
 
 [start]
 cmd = "npm start --workspace=server"
