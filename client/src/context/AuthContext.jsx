@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react"
+import { BASE_URL } from "../lib/api"
 
 const AuthContext = createContext(null)
 
@@ -10,8 +11,7 @@ export function AuthProvider({ children }) {
     // Load user from token on mount
     useEffect(() => {
         if (token) {
-            const baseUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:4000`
-            fetch(`${baseUrl}/api/auth/me`, {
+            fetch(`${BASE_URL}/api/auth/me`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
                 .then(res => res.ok ? res.json() : Promise.reject())

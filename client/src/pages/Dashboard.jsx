@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { BarChart3, Package, TrendingUp, AlertCircle, FileText, BadgeCheck, ArrowRight, Truck, ClipboardList, Plus, Pencil, X, Trash2, MessageSquare, Send, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "../components/Button"
 import { Link } from "react-router-dom"
-import { api } from "../lib/api"
+import { api, BASE_URL } from "../lib/api"
 import { useAuth } from "../context/AuthContext"
 import { io } from "socket.io-client"
 
@@ -78,7 +78,7 @@ export default function Dashboard() {
     const [aiMatchesLoading, setAiMatchesLoading] = useState(false)
 
     useEffect(() => {
-        const socketUrl = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:4000`
+        const socketUrl = BASE_URL
         const newSocket = io(socketUrl)
         setSocket(newSocket)
 
@@ -333,8 +333,7 @@ export default function Dashboard() {
         // Open the server-generated PDF in a new tab — token is included via fetch then blob URL
         try {
             const token = localStorage.getItem("token")
-            const apiBase = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:4000`
-            const res = await fetch(`${apiBase}/api/deals/${dealId}/compliance-pdf`, {
+            const res = await fetch(`${BASE_URL}/api/deals/${dealId}/compliance-pdf`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
             if (!res.ok) throw new Error("Failed to fetch PDF")
