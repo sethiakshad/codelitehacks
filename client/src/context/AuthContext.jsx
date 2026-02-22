@@ -11,10 +11,7 @@ export function AuthProvider({ children }) {
     // Load user from token on mount
     useEffect(() => {
         if (token) {
-            fetch(`${BASE_URL}/api/auth/me`, {
-                headers: { Authorization: `Bearer ${token}` }
-            })
-                .then(res => res.ok ? res.json() : Promise.reject())
+            api.get("/api/auth/me")
                 .then(data => setUser(data.user))
                 .catch(() => { localStorage.removeItem("token"); setToken(null) })
                 .finally(() => setLoading(false))

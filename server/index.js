@@ -75,11 +75,7 @@ io.on("connection", (socket) => {
 });
 
 // Middleware — must be before routes
-app.use(cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-}));
+app.use(cors()); // Permissive CORS for all origins and headers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
