@@ -166,16 +166,18 @@ router.get("/:id/matches", auth, async (req, res) => {
                 return {
                     ...item,
                     match_percentage: matchPercentage > 100 ? 100 : matchPercentage,
-                    match_reason: score > 0.8 ? "High semantic similarity & exact material match" : "Semantic similarity match"
+                    match_reason: score > 0.9 ? "Excellent match — same material & specs" :
+                        score > 0.8 ? "High semantic similarity & exact material match" :
+                            score > 0.6 ? "Good similarity — related material" :
+                                "Partial match — similar industrial category"
                 };
-            }).filter(item => item.match_percentage > 20) // Only return somewhat relevant results
-                .sort((a, b) => {
-                    if (b.match_percentage !== a.match_percentage) {
-                        return b.match_percentage - a.match_percentage;
-                    }
-                    // Stable secondary sort
-                    return String(a._id).localeCompare(String(b._id));
-                }).slice(0, 10);
+            }).sort((a, b) => {
+                if (b.match_percentage !== a.match_percentage) {
+                    return b.match_percentage - a.match_percentage;
+                }
+                // Stable secondary sort
+                return String(a._id).localeCompare(String(b._id));
+            }).slice(0, 10); // Always return top 10, regardless of score
         }
 
         // 6. Hydrate with Formulas for CO2 Savings
