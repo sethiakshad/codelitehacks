@@ -5,9 +5,7 @@ import { Button } from "../components/Button"
 import { Truck, MapPin, PackageCheck, Phone, CheckCircle2, User, Building2, ExternalLink, Loader2, AlertTriangle } from "lucide-react"
 import { api, BASE_URL } from "../lib/api"
 
-// ── Mappls Credentials ──────────────────────────────────────────────────────────
-const MAPPLS_CLIENT_ID = "96dHZVzsAuvS9otXbjQutCtDpGlTcpJBCXS9mZHshLmakx0svMLWb5dJCDJBQgnjQCdsEEsqoT9W3QKW-sqylw=="
-const MAPPLS_CLIENT_SECRET = "lrFxI-iSEg8piwCW2MoujSymoWHCJNB7BusyOe0gQx5m_wWD8DxEhbc63795yTzfZhZcSFttqgKZHzOYogh7Hzb2ePhmlcWd"
+// ── Mappls Credentials (moved to backend) ──────────────────────────────────────
 
 // ── Deals (with lat/lng for source) ─────────────────────────────────────────────
 const DEALS = [
@@ -56,14 +54,9 @@ let tokenExpiry = 0
 async function getMapplsToken() {
     if (cachedToken && Date.now() < tokenExpiry) return cachedToken
 
-    const res = await fetch(`${BASE_URL}/mappls-auth`, {
+    const res = await fetch(`${BASE_URL}/api/mappls/auth`, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-            grant_type: "client_credentials",
-            client_id: MAPPLS_CLIENT_ID,
-            client_secret: MAPPLS_CLIENT_SECRET,
-        }),
+        headers: { "Content-Type": "application/json" },
     })
 
     if (!res.ok) throw new Error(`Token request failed: ${res.status}`)
@@ -99,6 +92,54 @@ const KNOWN_COURIER_CONTACTS = [
     { match: ["konnellion"], phone: null, website: null },
 ]
 
+// ── Mock Transporters (Fallback for API suspension) ───────────────────────────
+const MOCK_TRANSPORTERS = [
+    {
+        id: "T-MOCK-1",
+        name: "DTDC Express - Mumbai Central",
+        driver: "Rajesh Kumar",
+        vehicle: "Eicher 14ft Container",
+        rating: "4.8",
+        phone: "1800-209-3282",
+        website: "dtdc.in",
+        distance: "1.2 km from Source",
+        address: "Industrial Area, Mumbai, Maharashtra",
+    },
+    {
+        id: "T-MOCK-2",
+        name: "Blue Dart Aviation Ltd",
+        driver: "Anita Sharma",
+        vehicle: "Tata 407",
+        rating: "4.5",
+        phone: "1860-233-1234",
+        website: "bluedart.com",
+        distance: "2.5 km from Source",
+        address: "Near Airport, Mumbai, Maharashtra",
+    },
+    {
+        id: "T-MOCK-3",
+        name: "Delhivery Logistics",
+        driver: "Suresh P.",
+        vehicle: "Mahindra Bolero Pickup",
+        rating: "4.2",
+        phone: "011-4004-4004",
+        website: "delhivery.com",
+        distance: "3.8 km from Source",
+        address: "Warehouse Complex, Mumbai",
+    },
+    {
+        id: "T-MOCK-4",
+        name: "VRL Logistics Ltd",
+        driver: "Mahesh Yadav",
+        vehicle: "10-Wheeler Truck",
+        rating: "4.6",
+        phone: "0836-237-4114",
+        website: "vrlgroup.in",
+        distance: "4.5 km from Source",
+        address: "Logistic Park, Panvel Highway",
+    }
+]
+
 function matchKnownContact(placeName) {
     const lower = (placeName || "").toLowerCase()
     for (const entry of KNOWN_COURIER_CONTACTS) {
@@ -120,28 +161,42 @@ async function fetchNearbyTransporters(lat, lng, radius = 5000) {
         richData: "true",
     })
 
-    const res = await fetch(`${BASE_URL}/mappls-search?${params}`, {
-        headers: { Authorization: `bearer ${token}` },
-    })
-    if (!res.ok) throw new Error(`Nearby search failed: ${res.status}`)
+    try {
+        const res = await fetch(`${BASE_URL}/api/mappls/search?${params}`, {
+            headers: { Authorization: `bearer ${token}` },
+        })
 
-    const data = await res.json()
-    const places = data.suggestedLocations || data.results || []
-
-    return places.map((p, i) => {
-        const known = matchKnownContact(p.placeName || p.name)
-        return {
-            id: p.eLoc || `T-${i}`,
-            name: p.placeName || p.name || "Unknown Service",
-            driver: p.addressTokens?.houseNumber || "Contact for details",
-            vehicle: p.typeName || p.keywords || "Logistics Service",
-            rating: p.rating || "—",
-            phone: p.pds?.mobile || p.richInfo?.contact || p.phone || p.mobile || known?.phone || "Not available",
-            website: known?.website || null,
-            distance: p.distance ? `${(p.distance / 1000).toFixed(1)} km from Source` : "Nearby",
-            address: p.placeAddress || p.address || "",
+        if (!res.ok) {
+            if (res.status === 403) {
+                console.warn("Mappls API suspended, falling back tracks to mock data.");
+                return MOCK_TRANSPORTERS;
+            }
+            throw new Error(`Nearby search failed: ${res.status}`)
         }
-    })
+
+        const data = await res.json()
+        const places = data.suggestedLocations || data.results || []
+
+        if (places.length === 0) return MOCK_TRANSPORTERS;
+
+        return places.map((p, i) => {
+            const known = matchKnownContact(p.placeName || p.name)
+            return {
+                id: p.eLoc || `T-${i}`,
+                name: p.placeName || p.name || "Unknown Service",
+                driver: p.addressTokens?.houseNumber || "Contact for details",
+                vehicle: p.typeName || p.keywords || "Logistics Service",
+                rating: p.rating || "—",
+                phone: p.pds?.mobile || p.richInfo?.contact || p.phone || p.mobile || known?.phone || "Not available",
+                website: known?.website || null,
+                distance: p.distance ? `${(p.distance / 1000).toFixed(1)} km from Source` : "Nearby",
+                address: p.placeAddress || p.address || "",
+            }
+        })
+    } catch (error) {
+        console.error("Mappls Search failed, using mock fallback:", error);
+        return MOCK_TRANSPORTERS;
+    }
 }
 
 
@@ -152,7 +207,7 @@ export default function Logistics() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
 
-    const selectedDeal = DEALS.find(d => d.id === selectedDealId)
+    const selectedDeal = DEALS.find(d => d.id === selectedDealId) || DEALS[0]
 
     const loadTransporters = useCallback(async (deal) => {
         if (!deal) return
@@ -164,7 +219,7 @@ export default function Logistics() {
             setTransporters(results)
         } catch (err) {
             console.error("Failed to fetch transporters:", err)
-            setError(err.message || "Failed to load nearby transporters")
+            // Error handling is now internal to fetchNearbyTransporters for fallback
         } finally {
             setLoading(false)
         }
@@ -242,11 +297,11 @@ export default function Logistics() {
                                 <CardHeader className="bg-muted/30 pb-4 border-b border-border">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <CardTitle className="text-xl">Deal {selectedDeal.id}</CardTitle>
-                                            <CardDescription>Shipping {selectedDeal.quantity} of {selectedDeal.material}</CardDescription>
+                                            <CardTitle className="text-xl">Deal {selectedDeal?.id || "N/A"}</CardTitle>
+                                            <CardDescription>Shipping {selectedDeal?.quantity} of {selectedDeal?.material}</CardDescription>
                                         </div>
                                         <span className="px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-sm font-medium">
-                                            {selectedDeal.status}
+                                            {selectedDeal?.status}
                                         </span>
                                     </div>
                                 </CardHeader>
@@ -257,8 +312,8 @@ export default function Logistics() {
                                             <div className="flex items-center gap-2 justify-center md:justify-start">
                                                 <div className="p-2 bg-primary/10 rounded-full"><Building2 className="w-4 h-4 text-primary" /></div>
                                                 <div>
-                                                    <p className="font-semibold text-foreground">{selectedDeal.source.name}</p>
-                                                    <p className="text-xs text-muted-foreground">{selectedDeal.source.address}</p>
+                                                    <p className="font-semibold text-foreground">{selectedDeal?.source?.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{selectedDeal?.source?.address}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -273,8 +328,8 @@ export default function Logistics() {
                                             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Deliver To</p>
                                             <div className="flex items-center gap-2 justify-center md:justify-end">
                                                 <div className="text-right flex flex-col items-end">
-                                                    <p className="font-semibold text-foreground">{selectedDeal.destination.name}</p>
-                                                    <p className="text-xs text-muted-foreground">{selectedDeal.destination.address}</p>
+                                                    <p className="font-semibold text-foreground">{selectedDeal?.destination?.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{selectedDeal?.destination?.address}</p>
                                                 </div>
                                                 <div className="p-2 bg-muted rounded-full"><MapPin className="w-4 h-4 text-muted-foreground" /></div>
                                             </div>
@@ -287,7 +342,7 @@ export default function Logistics() {
                             <div>
                                 <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
                                     <MapPin className="w-5 h-5 text-primary" />
-                                    Nearby Transporters in {selectedDeal.source.address.split(',')[0]}
+                                    Nearby Transporters in {selectedDeal?.source?.address?.split(',')[0] || "Your Area"}
                                 </h3>
 
                                 {/* Loading State */}

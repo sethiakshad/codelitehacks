@@ -18,6 +18,7 @@ import emissionFactorRoutes from "./routes/emissionFactors.js";
 import requirementRoutes from "./routes/requirements.js";
 import marketplaceRoutes from "./routes/marketplace.js";
 import messageRoutes from "./routes/messages.js";
+import mapplsRoutes from "./routes/mappls.js";
 import dealRoutesInit from "./routes/deals.js";
 import Message from "./models/messages.model.js";
 
@@ -88,6 +89,7 @@ app.use("/api/emission-factors", emissionFactorRoutes);
 app.use("/api/requirements", requirementRoutes);
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/mappls", mapplsRoutes);
 app.use("/api/deals", dealRoutesInit(io));
 
 // Final: Start Server & Connect DB

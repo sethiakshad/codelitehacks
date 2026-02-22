@@ -769,21 +769,27 @@ export default function Dashboard() {
                         )}
                     </CardContent>
                 </Card>
-                <Card className="bg-primary text-primary-foreground border-none">
-                    <CardContent className="pt-6">
-                        <div className="flex items-start gap-4">
-                            <div className="p-3 bg-white/20 rounded-lg">
-                                <Truck className="w-6 h-6" />
+                <Link to="/logistics" className="block group">
+                    <Card className="bg-primary text-primary-foreground border-none transition-all duration-300 hover:shadow-[0_0_20px_rgba(var(--primary),0.3)] hover:scale-[1.02] cursor-pointer relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <CardContent className="pt-6 relative z-10">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-white/20 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                                    <Truck className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-semibold text-lg">Logistics Active</h3>
+                                        <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+                                    </div>
+                                    <p className="text-sm text-primary-foreground/80 mt-1">
+                                        Pickup arriving in <strong>2 hours</strong>. Click to manage tracking.
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="font-semibold">Logistics Active</h3>
-                                <p className="text-sm text-primary-foreground/80 mt-1">
-                                    Pickup arriving in <strong>2 hours</strong>.
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </Link>
             </div>
 
             <Card>
