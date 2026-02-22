@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "../components/Card"
 import { Button } from "../components/Button"
 import { Truck, MapPin, PackageCheck, Phone, CheckCircle2, User, Building2, ExternalLink, Loader2, AlertTriangle } from "lucide-react"
+import { api, BASE_URL } from "../lib/api"
 
 // ── Mappls Credentials ──────────────────────────────────────────────────────────
 const MAPPLS_CLIENT_ID = "96dHZVzsAuvS9otXbjQutCtDpGlTcpJBCXS9mZHshLmakx0svMLWb5dJCDJBQgnjQCdsEEsqoT9W3QKW-sqylw=="
@@ -55,7 +56,7 @@ let tokenExpiry = 0
 async function getMapplsToken() {
     if (cachedToken && Date.now() < tokenExpiry) return cachedToken
 
-    const res = await fetch("/mappls-auth", {
+    const res = await fetch(`${BASE_URL}/mappls-auth`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -119,7 +120,7 @@ async function fetchNearbyTransporters(lat, lng, radius = 5000) {
         richData: "true",
     })
 
-    const res = await fetch(`/mappls-search?${params}`, {
+    const res = await fetch(`${BASE_URL}/mappls-search?${params}`, {
         headers: { Authorization: `bearer ${token}` },
     })
     if (!res.ok) throw new Error(`Nearby search failed: ${res.status}`)
