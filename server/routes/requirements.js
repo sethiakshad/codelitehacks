@@ -130,7 +130,7 @@ Format: [{"listing_id": "id", "match_percentage": 95, "reason": "reason here"}]`
         let result;
         try {
             result = await client.models.generateContent({
-                model: "models/gemini-flash-latest",
+                model: "gemini-1.5-flash",
                 contents: [{ role: 'user', parts: [{ text: prompt }] }],
                 config: {
                     temperature: 0.1,
