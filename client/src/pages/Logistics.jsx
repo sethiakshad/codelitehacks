@@ -56,7 +56,7 @@ let tokenExpiry = 0
 async function getMapplsToken() {
     if (cachedToken && Date.now() < tokenExpiry) return cachedToken
 
-    const res = await fetch("/mappls-auth", {
+    const res = await fetch(`${BASE_URL}/mappls-auth`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -120,7 +120,7 @@ async function fetchNearbyTransporters(lat, lng, radius = 5000) {
         richData: "true",
     })
 
-    const res = await fetch(`/mappls-search?${params}`, {
+    const res = await fetch(`${BASE_URL}/mappls-search?${params}`, {
         headers: { Authorization: `bearer ${token}` },
     })
     if (!res.ok) throw new Error(`Nearby search failed: ${res.status}`)

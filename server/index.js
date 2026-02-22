@@ -90,6 +90,38 @@ app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/deals", dealRoutesInit(io));
 
+// ── Mappls API Proxy (for production — Vite proxy only works in dev) ──────────
+app.post("/mappls-auth", async (req, res) => {
+    try {
+        const body = new URLSearchParams(req.body).toString();
+        const response = await fetch("https://outpost.mappls.com/api/security/oauth/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body,
+        });
+        const data = await response.json();
+        res.status(response.status).json(data);
+    } catch (err) {
+        console.error("[Mappls Auth Proxy] Error:", err.message);
+        res.status(500).json({ message: "Mappls auth proxy failed" });
+    }
+});
+
+app.get("/mappls-search", async (req, res) => {
+    try {
+        const token = req.headers["authorization"];
+        const params = new URLSearchParams(req.query).toString();
+        const response = await fetch(`https://atlas.mappls.com/api/places/nearby/json?${params}`, {
+            headers: { "Authorization": token },
+        });
+        const data = await response.json();
+        res.status(response.status).json(data);
+    } catch (err) {
+        console.error("[Mappls Search Proxy] Error:", err.message);
+        res.status(500).json({ message: "Mappls search proxy failed" });
+    }
+});
+
 // Final: Start Server & Connect DB
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
