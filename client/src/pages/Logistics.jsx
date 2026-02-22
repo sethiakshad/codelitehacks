@@ -6,8 +6,8 @@ import { Truck, MapPin, PackageCheck, Phone, CheckCircle2, User, Building2, Exte
 import { api, BASE_URL } from "../lib/api"
 
 // ── Mappls Credentials ──────────────────────────────────────────────────────────
-const MAPPLS_CLIENT_ID = "96dHZVzsAuvS9otXbjQutCtDpGlTcpJBCXS9mZHshLmakx0svMLWb5dJCDJBQgnjQCdsEEsqoT9W3QKW-sqylw=="
-const MAPPLS_CLIENT_SECRET = "lrFxI-iSEg8piwCW2MoujSymoWHCJNB7BusyOe0gQx5m_wWD8DxEhbc63795yTzfZhZcSFttqgKZHzOYogh7Hzb2ePhmlcWd"
+const MAPPLS_CLIENT_ID = "96dHZVzsAusuMxRjLswRBUTTM1rQVG8fIC68rQbgIrts6zvpO-sPU-2UbQnYgt9IEvLjJOp-08-pbWiCOrXN6g=="
+const MAPPLS_CLIENT_SECRET = "lrFxI-iSEg8piwCW2MoujeMeTg-61ruMnPjvw0RQ5j1VxPoIFN0-s1lqfJKTtgH4mXDtm06k6oTBcHrZB5D_kI8TVMA-lVp2"
 
 // ── Deals (with lat/lng for source) ─────────────────────────────────────────────
 const DEALS = [
@@ -56,7 +56,7 @@ let tokenExpiry = 0
 async function getMapplsToken() {
     if (cachedToken && Date.now() < tokenExpiry) return cachedToken
 
-    const res = await fetch(`${BASE_URL}/mappls-auth`, {
+    const res = await fetch("/mappls-auth", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
@@ -120,7 +120,7 @@ async function fetchNearbyTransporters(lat, lng, radius = 5000) {
         richData: "true",
     })
 
-    const res = await fetch(`${BASE_URL}/mappls-search?${params}`, {
+    const res = await fetch(`/mappls-search?${params}`, {
         headers: { Authorization: `bearer ${token}` },
     })
     if (!res.ok) throw new Error(`Nearby search failed: ${res.status}`)
