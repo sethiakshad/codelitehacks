@@ -34,35 +34,29 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
     console.log("A user connected via WebSocket:", socket.id);
 
-    // Client can emit "identify" passing their user ID to join a private room
     socket.on("identify", (userId) => {
         if (!userId) return;
         socket.join(userId.toString());
         console.log(`User ${userId} joined their personal room.`);
     });
 
-    // Join deal-specific chat room
     socket.on("join_chat", (dealId) => {
         if (!dealId) return;
         socket.join(`deal:${dealId}`);
         console.log(`Socket ${socket.id} joined deal room: deal:${dealId}`);
     });
 
-    // Leave deal-specific chat room
     socket.on("leave_chat", (dealId) => {
         if (!dealId) return;
         socket.leave(`deal:${dealId}`);
     });
 
-    // Chat Message Event — broadcast to the deal room so ALL participants receive it
     socket.on("send_message", async (data) => {
         const { deal_id, sender_id, text } = data;
         if (!deal_id || !sender_id || !text) return;
 
         try {
             const newMessage = await Message.create({ deal_id, sender_id, receiver_id: sender_id, text });
-
-            // Broadcast to the deal room — both users must join via join_chat
             io.to(`deal:${deal_id}`).emit("chat_message", newMessage);
         } catch (err) {
             console.error("Socket send_message error:", err);
@@ -74,27 +68,14 @@ io.on("connection", (socket) => {
     });
 });
 
-// Middleware — must be before routes
-app.use(cors()); // Permissive CORS for all origins and headers
+// Middleware
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check
 app.get("/", (req, res) => {
     res.json({ status: "ok", message: "CODELITE API is running." });
-});
-
-// Start Server & Connect DB
-const PORT = process.env.PORT || 4000;
-server.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Server ready on port ${PORT}`);
-
-    // Connect to MongoDB AFTER the server is already listening
-    connectDB().then(() => {
-        console.log("✅ MongoDB Connection logic initialized.");
-    }).catch(err => {
-        console.error("❌ MongoDB Initial Connection Failed:", err);
-    });
 });
 
 // API Routes
@@ -107,4 +88,16 @@ app.use("/api/emission-factors", emissionFactorRoutes);
 app.use("/api/requirements", requirementRoutes);
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/messages", messageRoutes);
-app.use("/api/deals", dealRoutesInit(io)); // Pass io to deals route
+app.use("/api/deals", dealRoutesInit(io));
+
+// Final: Start Server & Connect DB
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Server ready on port ${PORT}`);
+
+    connectDB().then(() => {
+        console.log("✅ MongoDB Connection logic initialized.");
+    }).catch(err => {
+        console.error("❌ MongoDB Initial Connection Failed:", err);
+    });
+});
