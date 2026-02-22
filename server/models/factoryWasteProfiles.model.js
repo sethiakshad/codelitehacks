@@ -8,6 +8,7 @@ const wasteProfileSchema = new mongoose.Schema({
   average_quantity_per_month: Number,
   hazardous: { type: Boolean, default: false },
   storage_condition: String,
+  embedding: { type: [Number] },
 
 }, { timestamps: true });
 

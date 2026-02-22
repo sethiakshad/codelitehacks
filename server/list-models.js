@@ -7,7 +7,8 @@ async function list() {
         const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const models = await client.models.list();
         for await (const model of models) {
-            if (model.name.includes("flash")) {
+            // console.log(model.name);
+            if (model.name.includes("embed") || model.name.includes("embedding")) {
                 console.log(model.name);
             }
         }

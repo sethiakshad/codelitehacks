@@ -85,91 +85,93 @@ router.get("/:id/matches", auth, async (req, res) => {
             return res.status(200).json([]);
         }
 
-        // 3. Prepare AI Prompt String
-        const listingsContext = listings.map(l => ({
-            id: l._id,
-            material: l.waste_type,
-            quantity: l.average_quantity_per_month,
-            unit: l.unit,
-            seller: l.factory_id?.name || l.user_id?.name || "Independent Seller",
-            location: l.factory_id?.city || "Unknown Location",
-            availability: l.availability_status || "Immediate"
-        }));
+        // 3. Generate embedding for the requirement
+        const { generateEmbedding, cosineSimilarity } = await import("../utils/embeddings.js");
+        const reqText = `Seeking Material: ${requirement.material}, Quantity Needed: ${requirement.qty}, Priority: ${requirement.priority}`;
+        const reqEmbedding = await generateEmbedding(reqText);
 
-        console.log(`[AI MATCH] Matching requirement for ${requirement.material}. Found ${listingsContext.length} total listings.`);
+        let populatedMatches = [];
 
-        const prompt = `You are an expert Circular Economy AI Matchmaker.
-I have a buyer who needs the following material:
-- Material: ${requirement.material}
-- Quantity Needed: ${requirement.qty}
-- Priority/Timing: ${requirement.priority}
-
-Here are the available marketplace listings (potential suppliers):
-${JSON.stringify(listingsContext, null, 2)}
-
-Your task is to analyze every single listing and determine how well it matches the buyer's requirement. 
-Calculate a "match_percentage" (0 to 100) based strictly on these 4 factors:
-1. Material Match: Exact material matches are required for a high score.
-2. Volume Match: Alignment of quantity and unit.
-3. Location / Distance: Favor nearby companies.
-4. Timing Compatibility: Buyer priority vs seller availability.
-
-Return EXACTLY a JSON array of objects. NO markdown formatting.
-Format: [{"listing_id": "id", "match_percentage": 95, "reason": "reason here"}]`;
-
-        // 4. API check
-        const apiKey = (process.env.GEMINI_API_KEY || "").trim();
-        if (!apiKey) {
-            console.error("[AI MATCH] GEMINI_API_KEY is missing!");
-            return res.status(500).json({ message: "Server AI key missing." });
-        }
-
-        // 5. Call SDK
-        const client = new GoogleGenAI({ apiKey });
-
-        let result;
+        // 4. Try MongoDB Vector Search
         try {
-            result = await client.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                config: {
-                    temperature: 0.1,
-                    responseMimeType: "application/json"
+            if (reqEmbedding.length > 0) {
+                // We use an aggregation pipeline for vector search
+                const atlasResults = await FactoryWasteProfile.aggregate([
+                    {
+                        "$vectorSearch": {
+                            "index": "vector_index", // The name of the index in Atlas
+                            "queryVector": reqEmbedding,
+                            "path": "embedding",
+                            "numCandidates": 100,
+                            "limit": 10
+                        }
+                    },
+                    {
+                        "$project": {
+                            "_id": 1,
+                            "waste_type": 1,
+                            "average_quantity_per_month": 1,
+                            "unit": 1,
+                            "factory_id": 1,
+                            "user_id": 1,
+                            "score": { "$meta": "vectorSearchScore" }
+                        }
+                    }
+                ]);
+
+                if (atlasResults && atlasResults.length > 0) {
+                    // Populate factory and user data manually since aggregate doesn't run Mongoose middleware automatically in the same way
+                    await FactoryWasteProfile.populate(atlasResults, { path: "factory_id", select: "name city state" });
+                    await FactoryWasteProfile.populate(atlasResults, { path: "user_id", select: "name email" });
+
+                    populatedMatches = atlasResults.map(item => {
+                        const score = item.score || 0;
+                        const matchPercentage = Math.round(score * 100);
+                        return {
+                            ...item,
+                            match_percentage: matchPercentage > 100 ? 100 : matchPercentage,
+                            match_reason: `Vector similarity score: ${score.toFixed(3)}`
+                        };
+                    });
+                    console.log(`[AI MATCH] Vector Search succeeded. Found ${populatedMatches.length} matches.`);
                 }
-            });
-        } catch (sdkErr) {
-            console.error("[AI MATCH] Gemini SDK Error:", sdkErr.message);
-            return res.status(500).json({ message: "Gemini SDK Error: " + sdkErr.message });
+            }
+        } catch (vsErr) {
+            console.warn(`[AI MATCH] Native $vectorSearch failed (likely index missing): ${vsErr.message}. Falling back to memory calculation...`);
         }
 
-        let rawText = result.text || "[]";
+        // 5. Fallback: Memory-based Cosine Similarity if Vector Search failed or returned nothing
+        if (populatedMatches.length === 0 && reqEmbedding.length > 0) {
+            console.log("[AI MATCH] Using memory-based cosine similarity fallback.");
+            populatedMatches = listings.map(listing => {
+                const item = listing.toObject();
+                let score = 0;
+                if (item.embedding && item.embedding.length > 0) {
+                    score = cosineSimilarity(reqEmbedding, item.embedding);
+                }
 
-        // Clean markdown backticks
-        if (rawText.includes("```json")) {
-            rawText = rawText.split("```json")[1].split("```")[0];
-        } else if (rawText.includes("```")) {
-            rawText = rawText.split("```")[1].split("```")[0];
+                // Boost score slightly if exact material match (helps fallback logic)
+                if (item.waste_type && requirement.material && item.waste_type.toLowerCase() === requirement.material.toLowerCase()) {
+                    score = Math.min(1.0, score + 0.1);
+                }
+
+                const matchPercentage = Math.max(0, Math.round(score * 100));
+
+                return {
+                    ...item,
+                    match_percentage: matchPercentage > 100 ? 100 : matchPercentage,
+                    match_reason: score > 0.8 ? "High semantic similarity & exact material match" : "Semantic similarity match"
+                };
+            }).filter(item => item.match_percentage > 20) // Only return somewhat relevant results
+                .sort((a, b) => b.match_percentage - a.match_percentage).slice(0, 10);
         }
-        rawText = rawText.trim();
 
-        let aiResults = [];
-        try {
-            aiResults = JSON.parse(rawText);
-        } catch (parseErr) {
-            console.error("[AI MATCH] JSON Parse error:", rawText);
-            return res.status(500).json({ message: "AI returned invalid JSON." });
-        }
-
-        // 6. Hydrate
+        // 6. Hydrate with Formulas for CO2 Savings
         const formulas = await Formula.find();
         const formulaMap = {};
         formulas.forEach(f => { formulaMap[f.material.toLowerCase()] = f; });
 
-        const populatedMatches = aiResults.map(aiHit => {
-            const rawListing = listings.find(l => l._id.toString() === aiHit.listing_id);
-            if (!rawListing) return null;
-
-            const item = rawListing.toObject();
+        populatedMatches = populatedMatches.map(item => {
             const wasteTypeKey = (item.waste_type || "").replace(/\s+/g, '').toLowerCase();
             const formula = formulaMap[wasteTypeKey] || formulaMap["steel"]; // fallback for demo
 
@@ -177,12 +179,8 @@ Format: [{"listing_id": "id", "match_percentage": 95, "reason": "reason here"}]`
                 ? (formula.virgin - formula.recycled)
                 : 0;
 
-            item.match_percentage = aiHit.match_percentage;
-            item.match_reason = aiHit.reason;
-
             return item;
-        }).filter(item => item !== null)
-            .sort((a, b) => b.match_percentage - a.match_percentage);
+        });
 
         console.log(`[AI MATCH] Returning ${populatedMatches.length} matches.`);
         res.status(200).json(populatedMatches);
