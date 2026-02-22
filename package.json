@@ -1,4 +1,10 @@
 {
+  "name": "codelite-monorepo",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "cd server && node index.js",
+    "build": "cd server && npm install"
+  },
   "dependencies": {
     "mongodb": "^7.1.0"
   }
