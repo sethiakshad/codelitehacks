@@ -79,12 +79,22 @@ app.use(cors()); // Permissive CORS for all origins and headers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Connect to MongoDB
-connectDB();
-
 // Health check
 app.get("/", (req, res) => {
     res.json({ status: "ok", message: "CODELITE API is running." });
+});
+
+// Start Server & Connect DB
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Server ready on port ${PORT}`);
+
+    // Connect to MongoDB AFTER the server is already listening
+    connectDB().then(() => {
+        console.log("✅ MongoDB Connection logic initialized.");
+    }).catch(err => {
+        console.error("❌ MongoDB Initial Connection Failed:", err);
+    });
 });
 
 // API Routes
@@ -98,8 +108,3 @@ app.use("/api/requirements", requirementRoutes);
 app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/deals", dealRoutesInit(io)); // Pass io to deals route
-
-const PORT = process.env.PORT || 4000;
-server.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Server ready on port ${PORT}`);
-});

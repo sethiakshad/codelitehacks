@@ -7,6 +7,10 @@
     "client"
   ],
   "scripts": {
-    "start": "npm start --workspace=server"
+    "start": "npm start --workspace=server",
+    "build": "npm install"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
