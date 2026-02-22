@@ -101,5 +101,5 @@ app.use("/api/deals", dealRoutesInit(io)); // Pass io to deals route
 
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT} — accessible at http://0.0.0.0:${PORT}`);
+    console.log(`🚀 Server ready on port ${PORT}`);
 });
