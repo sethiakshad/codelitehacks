@@ -1,4 +1,4 @@
-export const BASE_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:4000`
+export const BASE_URL = import.meta.env.VITE_API_URL || 'https://codelitehacks-production.up.railway.app'
 
 const getToken = () => localStorage.getItem("token")
 
