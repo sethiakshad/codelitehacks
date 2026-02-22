@@ -132,6 +132,12 @@ router.get("/:id/matches", auth, async (req, res) => {
                             match_percentage: matchPercentage > 100 ? 100 : matchPercentage,
                             match_reason: `Vector similarity score: ${score.toFixed(3)}`
                         };
+                    }).sort((a, b) => {
+                        if (b.match_percentage !== a.match_percentage) {
+                            return b.match_percentage - a.match_percentage;
+                        }
+                        // Stable secondary sort
+                        return String(a._id).localeCompare(String(b._id));
                     });
                     console.log(`[AI MATCH] Vector Search succeeded. Found ${populatedMatches.length} matches.`);
                 }
@@ -163,7 +169,13 @@ router.get("/:id/matches", auth, async (req, res) => {
                     match_reason: score > 0.8 ? "High semantic similarity & exact material match" : "Semantic similarity match"
                 };
             }).filter(item => item.match_percentage > 20) // Only return somewhat relevant results
-                .sort((a, b) => b.match_percentage - a.match_percentage).slice(0, 10);
+                .sort((a, b) => {
+                    if (b.match_percentage !== a.match_percentage) {
+                        return b.match_percentage - a.match_percentage;
+                    }
+                    // Stable secondary sort
+                    return String(a._id).localeCompare(String(b._id));
+                }).slice(0, 10);
         }
 
         // 6. Hydrate with Formulas for CO2 Savings
